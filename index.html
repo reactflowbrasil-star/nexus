@@ -1357,6 +1357,69 @@ Views.conversas = function(){
   </div>`;
 };
 
+/* ================= PERSISTÊNCIA REAL (localStorage) ================= */
+const STATE_KEY = 'nexus.state.v1';
+function persistState(){
+  try{
+    localStorage.setItem(STATE_KEY, JSON.stringify({
+      contacts: state.contacts,
+      conversations: state.conversations.map(c=>({id:c.id,name:c.name,channel:c.channel,unread:0,ai:c.ai,status:c.status,time:c.time,messages:c.messages})),
+      pipeline: state.pipeline,
+      workflows: state.workflows,
+      agents: state.agents,
+      appointments: state.appointments,
+      services: state.services || [],
+      campaigns: state.campaigns,
+      events: state.events.slice(0,40)
+    }));
+  }catch(e){ /* quota */ }
+}
+function loadPersisted(){
+  try{
+    const raw = localStorage.getItem(STATE_KEY);
+    if(!raw) return false;
+    const d = JSON.parse(raw);
+    if(!d || !d.contacts || !d.contacts.length) return false;
+    state.contacts = d.contacts;
+    state.conversations = d.conversations && d.conversations.length ? d.conversations : state.conversations;
+    if(d.pipeline && d.pipeline.stages) state.pipeline = d.pipeline;
+    if(d.workflows) state.workflows = d.workflows;
+    if(d.agents) state.agents = d.agents;
+    if(d.appointments) state.appointments = d.appointments;
+    if(d.services && d.services.length) state.services = d.services;
+    if(d.campaigns) state.campaigns = d.campaigns;
+    if(d.events) state.events = d.events;
+    return true;
+  }catch(e){ return false; }
+}
+
+/* ================= WHATSAPP REAL (envio/status) ================= */
+async function refreshEvolutionStatus(){
+  const cfg = state.integration.evolution;
+  if(!cfg.apiKey || !cfg.baseUrl) return;
+  try{
+    const st = await evolutionRequest('/instance/status');
+    const on = !!(st.data && st.data.connected && st.data.loggedIn);
+    if(on !== cfg.connected){
+      cfg.connected = on;
+      if(on) localStorage.setItem('nexus.evolution.connected','true');
+      else localStorage.removeItem('nexus.evolution.connected');
+      pushEvent('integration','Status WhatsApp sincronizado: '+(on?'conectado':'desconectado'));
+      render();
+    }
+  }catch(e){ /* silencioso */ }
+}
+async function sendRealWhatsApp(contactName, text){
+  const contact = state.contacts.find(c=>c.name===contactName);
+  if(!contact || !contact.phone) return {ok:false, reason:'sem número'};
+  const number = String(contact.phone).replace(/\D/g,'');
+  if(number.length < 10) return {ok:false, reason:'número inválido'};
+  try{
+    await evolutionRequest('/send/text', { method:'POST', body: JSON.stringify({ number: number, text: text }) });
+    return { ok:true };
+  }catch(err){ return { ok:false, reason: err.message }; }
+}
+
 /* ================= ROUTER ================= */
 const VIEW_TITLES = {dashboard:'Dashboard', contatos:'Contatos', pipeline:'Pipeline', conversas:'Conversas', workflows:'Workflows', agentes:'Agentes IA', agenda:'Agenda', campanhas:'Campanhas', forms:'Forms', landings:'Landing Pages', analytics:'Analytics', integracoes:'Integrações', admin:'SaaS Admin', segmentos:'Segmentos', empresas:'Empresas'};
 
@@ -1369,6 +1432,7 @@ function render(){
   hydrateIcons(content);
   document.querySelector('#content').scrollTop = 0;
   afterRender(v);
+  persistState();
 }
 function go(view){
   state.view = view;
@@ -1956,6 +2020,18 @@ function sendChat(text){
   b.innerHTML = esc(msg)+'<div class="b-meta">'+nowTime()+' · '+icon('check',10)+icon('check',10)+'</div>';
   body.insertBefore(b, $('#chat-typing'));
   body.scrollTop = body.scrollHeight;
+  // Envio REAL via Evolution GO quando o canal é WhatsApp
+  if(conv.channel==='whatsapp' && state.integration.evolution.connected){
+    sendRealWhatsApp(conv.name, msg).then(r=>{
+      if(!r.ok){
+        b.innerHTML += '<div class="b-meta" style="color:#FCA5A5">⚠ falha no envio: '+esc(r.reason)+'</div>';
+        toast('Falha ao enviar WhatsApp: '+r.reason,'warn');
+      } else {
+        pushEvent('wa','Mensagem enviada via WhatsApp para '+conv.name);
+      }
+      persistState();
+    });
+  }
   if(state.chatMode==='ai' && conv.ai){
     const tp = document.createElement('div');
     tp.className='typing'; tp.innerHTML='<i></i><i></i><i></i>';
@@ -2152,7 +2228,23 @@ const ACTIONS = {
     const cid = state.contacts.indexOf(c);
     openDrawer(contactDrawer(c));
   },
-  'fake-wa': ()=>toast('Ação simulada: mensagem de WhatsApp enviada (demo)','success'),
+  'fake-wa': ()=>{
+    // Lembrete REAL via WhatsApp quando há contato identificado no modal
+    const nameEl = document.querySelector('#modal-root .m-body .bold');
+    const name = nameEl ? nameEl.textContent.trim() : '';
+    if(name && state.integration.evolution.connected){
+      const contact = state.contacts.find(c=>c.name===name);
+      if(contact && contact.phone){
+        toast('Enviando lembrete via WhatsApp para '+name+'...','info');
+        sendRealWhatsApp(name, 'Olá '+name.split(' ')[0]+'! 👋 Passando para lembrar do seu agendamento. Precisa remarcar ou tem alguma dúvida? Estamos à disposição!').then(r=>{
+          if(r.ok){ toast('Lembrete enviado via WhatsApp para '+name,'success'); pushEvent('wa','Lembrete WhatsApp enviado: '+name); }
+          else toast('Falha no envio do lembrete: '+r.reason,'warn');
+        });
+        return;
+      }
+    }
+    toast('Ação simulada: mensagem de WhatsApp enviada (demo)','success');
+  },
   'fake-mail': ()=>toast('Ação simulada: e-mail enviado (demo)','success'),
   'fake-opp': ()=>toast('Nova oportunidade criada (demo)','success'),
   'fake-landing': ()=>toast('Abrindo preview da página (demo)','info'),
@@ -2248,7 +2340,7 @@ const ACTIONS = {
     const ta=$('#cp-msg'); if(ta){ ta.oninput=()=>{ $('#cp-count').textContent=ta.value.length; }; ta.dispatchEvent(new Event('input')); }
   },
   'save-camp-draft': ()=>{ const n=$('#cp-name')?.value||'Campanha sem nome'; state.campaigns.unshift({id:'cp'+Date.now(), name:n, channel:'whatsapp', segment:'Novos leads', status:'rascunho', sent:0, total:0, rate:0, sched:'Não agendada'}); closeModal(); toast('Rascunho "'+n+'" salvo','success'); render(); },
-  'save-camp': ()=>{ const n=$('#cp-name')?.value||'Campanha sem nome'; state.campaigns.unshift({id:'cp'+Date.now(), name:n, channel:'whatsapp', segment:'Novos leads', status:'ativa', sent:0, total:1200, rate:0, sched:'Seg 10:00'}); closeModal(); toast('Campanha "'+n+'" ativada — primeiro envio agendado','success'); pushEvent('camp','Campanha "'+n+'" criada e ativada'); render(); },
+  'save-camp': ()=>{ const n=$('#cp-name')?.value||'Campanha sem nome'; const campMsg=$('#cp-msg')?.value||''; state.campaigns.unshift({id:'cp'+Date.now(), name:n, channel:'whatsapp', segment:'Novos leads', status:'ativa', sent:0, total:1200, rate:0, sched:'Seg 10:00', msg:campMsg}); closeModal(); toast('Campanha "'+n+'" ativada — primeiro envio agendado','success'); pushEvent('camp','Campanha "'+n+'" criada e ativada'); render(); },
   'new-opp': ()=>{
     openModal('<div class="m-head"><h3>Nova oportunidade</h3><div class="grow"></div><button class="icon-btn" data-action="close-modal"><span data-ic="x" data-size="14"></span></button></div>'+
     '<div class="m-body"><div class="f-row"><div class="field"><span class="f-label">Contato</span><select class="f-select">'+state.contacts.map(c=>'<option>'+c.name+'</option>').join('')+'</select></div><div class="field"><span class="f-label">Valor (R$)</span><input class="f-input" id="op-val" type="number" value="2500"></div></div>'+
@@ -2357,7 +2449,16 @@ const ACTIONS = {
   },
   'save-contact': ()=>{
     const n=$('#nc-name')?.value.trim()||'Novo contato';
-    state.contacts.unshift({id:Date.now(), name:n, company:'—', phone:'+55 62 9____-____', email:'—', channel:'whatsapp', origin:'Manual', tags:['Lead'], score:50, stage:'novo', value:0, owner:'Carlos', last:0, lastLabel:'Contato criado',
+    const mInputs=[...document.querySelectorAll('#modal-root .m-body input')];
+    const fieldByPh=ph=>{ const el=mInputs.find(i=>i.placeholder===ph); return el?el.value.trim():''; };
+    const company=fieldByPh('Empresa')||'—';
+    const phone=fieldByPh('+55 62 9....-....')||fieldByPh('WhatsApp')||'—';
+    const email=fieldByPh('email@empresa.com')||fieldByPh('E-mail')||'—';
+    const selects=document.querySelectorAll('#modal-root .m-body select');
+    const origin=selects[0]?.value||'Manual';
+    const chanRaw=(selects[1]?.value||'WhatsApp').toLowerCase();
+    const channel=chanRaw.includes('whats')?'whatsapp':chanRaw.includes('insta')?'instagram':chanRaw.includes('mail')?'email':'webchat';
+    state.contacts.unshift({id:Date.now(), name:n, company, phone, email, channel, origin, tags:['Lead'], score:50, stage:'novo', value:0, owner:'Carlos', last:0, lastLabel:'Contato criado',
       timeline:tl(['user','Contato criado manualmente por Carlos','agora'])});
     closeModal();
     toast('<code>contact.created</code><br>'+n+' criado no CRM — workflow de boas-vindas disparado','event');
@@ -2394,25 +2495,30 @@ document.querySelectorAll('.nav-item').forEach(n=>{
 
 /* ================= INIT ================= */
 function init(){
-  state.contacts = makeContacts();
-  state.conversations = makeConversations();
-  makePipeline();
-  state.workflows = makeWorkflows();
-  state.agents = makeAgents();
-  state.appointments = makeAppointments();
-  state.services = [
-    {name:'Consultoria', dur:'30 min', price:'R$ 290'},
-    {name:'Sessão comercial', dur:'60 min', price:'R$ 490'},
-    {name:'Diagnóstico gratuito', dur:'15 min', price:'Grátis'}
-  ];
-  state.campaigns = makeCampaigns();
+  const restored = loadPersisted();
+  if(!restored){
+    state.contacts = makeContacts();
+    state.conversations = makeConversations();
+    makePipeline();
+    state.workflows = makeWorkflows();
+    state.agents = makeAgents();
+    state.appointments = makeAppointments();
+    state.services = [
+      {name:'Consultoria', dur:'30 min', price:'R$ 290'},
+      {name:'Sessão comercial', dur:'60 min', price:'R$ 490'},
+      {name:'Diagnóstico gratuito', dur:'15 min', price:'Grátis'}
+    ];
+    state.campaigns = makeCampaigns();
+    state.events = makeEvents();
+    persistState();
+  }
   state.analytics = makeAnalytics();
   state.admin = makeAdmin();
-  state.events = makeEvents();
-  state.selectedChat = state.conversations[0].id;
+  if(!state.selectedChat || !state.conversations.find(c=>c.id===state.selectedChat)) state.selectedChat = state.conversations[0].id;
   hydrateIcons(document);
   render();
-  setTimeout(()=>toast('Bem-vindo ao protótipo Nexus CRM! 🚀 Navegue pelo menu lateral e arraste os cards do pipeline.','success','Boas-vindas'), 600);
+  refreshEvolutionStatus();
+  setTimeout(()=>toast(restored?'Bem-vindo de volta! Seus dados foram carregados. 🚀':'Bem-vindo ao Nexus CRM! 🚀 Tudo que você criar fica salvo neste navegador.','success','Boas-vindas'), 600);
 }
 init();
 </script>
