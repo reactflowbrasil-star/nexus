@@ -681,9 +681,33 @@ const state = {
   selectedChat:null,
   analytics:{leads30:[], funnel:[], channels:[], origins:[]},
   admin:null,
+  integration:{
+    evolution:{baseUrl:localStorage.getItem('nexus.evolution.baseUrl')||'https://gsqtqqfylbuqaxxcoi1eftho.reactfly.run.place',apiKey:localStorage.getItem('nexus.evolution.apiKey')||'',instance:localStorage.getItem('nexus.evolution.instance')||'nexus-prod',connected:!!localStorage.getItem('nexus.evolution.apiKey')}
+  },
   activeWorkflow:0,
   selectedNode:null
 };
+
+async function evolutionRequest(path, options={}){
+  const cfg=state.integration.evolution;
+  if(!cfg.apiKey) throw new Error('Configure a API key do Evolution GO primeiro.');
+  const response=await fetch(cfg.baseUrl.replace(/\\/$/,'')+path,{...options,headers:{'Content-Type':'application/json',apikey:cfg.apiKey,...(options.headers||{})}});
+  const body=await response.text();
+  let data; try{data=body?JSON.parse(body):{}}catch{data={raw:body};}
+  if(!response.ok) throw new Error(data.message||data.error||'Evolution GO respondeu '+response.status);
+  return data;
+}
+
+function evolutionConfigModal(){
+  const c=state.integration.evolution;
+  openModal('<div class="m-head"><h3>Evolution GO</h3><div class="grow"></div><button class="icon-btn" data-action="close-modal"><span data-ic="x" data-size="14"></span></button></div>'+\
+    '<div class="m-body"><div class="small muted mb12">Conecte o gateway WhatsApp ao Nexus. A chave fica somente neste navegador.</div>'+\
+    '<div class="field"><span class="f-label">URL da API</span><input class="f-input" id="evo-url" value="'+esc(c.baseUrl)+'"></div>'+\
+    '<div class="field mt12"><span class="f-label">API key</span><input class="f-input" id="evo-key" type="password" value="'+esc(c.apiKey)+'" placeholder="GLOBAL_API_KEY"></div>'+\
+    '<div class="field mt12"><span class="f-label">Instância padrão</span><input class="f-input" id="evo-instance" value="'+esc(c.instance)+'"></div>'+\
+    '<div class="flex mt16" style="gap:8px"><button class="btn btn-soft btn-sm" data-action="evo-test">Testar conexão</button><span id="evo-result" class="small muted"></span></div></div>'+\
+    '<div class="m-foot"><button class="btn btn-ghost btn-sm" data-action="close-modal">Cancelar</button><button class="btn btn-primary btn-sm" data-action="save-evo">Salvar integração</button></div>');
+}
 
 /* ---- contacts ---- */
 function tl(...items){ return items.map(i=>({type:i[0], text:i[1], time:i[2]})); }
@@ -1795,7 +1819,7 @@ Views.integracoes = function(){
     <div class="ph-actions"><button class="btn btn-ghost btn-sm"><span data-ic="webhook" data-size="13"></span>Webhooks</button></div>
   </div>
   <div class="grid g4">
-    ${ints.map(i=>'<div class="card int-card"><div class="between"><span class="int-logo" style="background:'+i.bg+'">'+(i.n==='Meta Ads'?'f':i.n==='WhatsApp Cloud API'?'WA':i.n==='Evolution GO'?'EVO':i.n==='Google Agenda'?'G':i.n==='Instagram'?'IG':i.n==='Facebook Messenger'?'f':i.n==='Zapier'?'Z':'{ }')+'</span><label class="switch"><input type="checkbox" '+(i.on?'checked':'')+' data-action="int-toggle"><span class="sl"></span></label></div><div><div class="int-name">'+i.n+'</div><div class="int-desc">'+i.d+'</div></div><span class="badge '+(i.on?'b-green':'b-gray')+'">'+(i.on?'Conectado':i.s)+'</span></div>').join('')}
+    ${ints.map(i=>'<div class="card int-card" '+(i.n==='Evolution GO'?'data-action="configure-int" style="cursor:pointer"':'')+'><div class="between"><span class="int-logo" style="background:'+i.bg+'">'+(i.n==='Meta Ads'?'f':i.n==='WhatsApp Cloud API'?'WA':i.n==='Evolution GO'?'EVO':i.n==='Google Agenda'?'G':i.n==='Instagram'?'IG':i.n==='Facebook Messenger'?'f':i.n==='Zapier'?'Z':'{ }')+'</span><label class="switch"><input type="checkbox" '+(i.on?'checked':'')+' data-action="int-toggle"><span class="sl"></span></label></div><div><div class="int-name">'+i.n+'</div><div class="int-desc">'+i.d+'</div></div><span class="badge '+(i.on?'b-green':'b-gray')+'">'+(i.n==='Evolution GO'?(state.integration.evolution.connected?'Conectado':'configurar'):(i.on?'Conectado':i.s))+'</span></div>').join('')}
   </div>`;
 };
 
@@ -2018,6 +2042,21 @@ const ACTIONS = {
   'new-segment': ()=>toast('Novo segmento (demo) — defina condições de filtro','info'),
   'new-tenant': ()=>toast('Nova empresa (demo) — provisioning multi-tenant simulado','info'),
   'int-toggle': el=>{ const on = el.checked; toast((on?'Conectado':'Desconectado')+' (simulação de integração)','info'); },
+  'configure-int': ()=>evolutionConfigModal(),
+  'save-evo': ()=>{
+    const baseUrl=$('#evo-url').value.trim().replace(/\\/$/,'');
+    const apiKey=$('#evo-key').value.trim();
+    const instance=$('#evo-instance').value.trim()||'nexus-prod';
+    if(!baseUrl||!apiKey){toast('Informe a URL e a API key do Evolution GO.','warn');return;}
+    state.integration.evolution={baseUrl,apiKey,instance,connected:true};
+    localStorage.setItem('nexus.evolution.baseUrl',baseUrl); localStorage.setItem('nexus.evolution.apiKey',apiKey); localStorage.setItem('nexus.evolution.instance',instance);
+    closeModal(); toast('Evolution GO conectado ao Nexus.','success'); pushEvent('integration','Evolution GO configurado · '+instance); render();
+  },
+  'evo-test': async ()=>{
+    const out=$('#evo-result'); if(out) out.textContent='Testando...';
+    try{ const old=state.integration.evolution; state.integration.evolution={...old,baseUrl:$('#evo-url').value.trim(),apiKey:$('#evo-key').value.trim(),instance:$('#evo-instance').value.trim()}; await evolutionRequest('/instance/all'); if(out){out.textContent='Conexão OK';out.style.color='#15803D';} }
+    catch(err){if(out){out.textContent=err.message;out.style.color='#B91C1C';}}
+  },
   'new-agent': ()=>toast('Novo agente (demo) — configure objetivo e ferramentas','info'),
   'add-file': ()=>toast('Upload de arquivo para a base de conhecimento (demo)','info'),
   'save-agent': ()=>toast('Configurações do agente salvas!','success'),
