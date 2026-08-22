@@ -691,7 +691,7 @@ const state = {
 async function evolutionRequest(path, options={}){
   const cfg=state.integration.evolution;
   if(!cfg.apiKey) throw new Error('Configure a API key do Evolution GO primeiro.');
-  const response=await fetch(cfg.baseUrl.replace(/\\/$/,'')+path,{...options,headers:{'Content-Type':'application/json',apikey:cfg.apiKey,...(options.headers||{})}});
+  const response=await fetch(cfg.baseUrl.replace(/\/$/,'')+path,{...options,headers:{'Content-Type':'application/json',apikey:cfg.apiKey,...(options.headers||{})}});
   const body=await response.text();
   let data; try{data=body?JSON.parse(body):{}}catch{data={raw:body};}
   if(!response.ok) throw new Error(data.message||data.error||'Evolution GO respondeu '+response.status);
@@ -2044,7 +2044,7 @@ const ACTIONS = {
   'int-toggle': el=>{ const on = el.checked; toast((on?'Conectado':'Desconectado')+' (simulação de integração)','info'); },
   'configure-int': ()=>evolutionConfigModal(),
   'save-evo': ()=>{
-    const baseUrl=$('#evo-url').value.trim().replace(/\\/$/,'');
+    const baseUrl=$('#evo-url').value.trim().replace(/\/$/,'');
     const apiKey=$('#evo-key').value.trim();
     const instance=$('#evo-instance').value.trim()||'nexus-prod';
     if(!baseUrl||!apiKey){toast('Informe a URL e a API key do Evolution GO.','warn');return;}
