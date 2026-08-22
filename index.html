@@ -773,6 +773,7 @@ function evolutionConfigModal(){
     '<div class="field mt12"><span class="f-label">API key</span><input class="f-input" id="evo-key" type="password" value="'+esc(c.apiKey)+'" placeholder="GLOBAL_API_KEY"></div>'+ 
     '<div class="field mt12"><span class="f-label">Instância padrão</span><input class="f-input" id="evo-instance" value="'+esc(c.instance)+'"></div>'+ 
     '<div class="field mt12"><span class="f-label">Token da instância (envio de mensagens)</span><input class="f-input" id="evo-token" type="password" value="'+esc(localStorage.getItem('nexus.evolution.instanceToken')||c.instance)+'" placeholder="igual ao nome da instância, se não souber"></div>'+ 
+    '<div class="field mt12"><span class="f-label">Relay de recebimento (webhook)</span><input class="f-input" id="evo-relay" value="'+esc(localStorage.getItem('nexus.evolution.relayUrl')||'/api/whatsapp-relay.py')+'" placeholder="/api/whatsapp-relay.py"><div class="tiny muted mt4">Aponte o webhook do Evolution GO (eventos MESSAGES_UPSERT) para esta URL para receber mensagens em tempo real.</div></div>'+ 
     '<div class="flex mt16" style="gap:8px"><button class="btn btn-soft btn-sm" data-action="evo-test">Testar conexão</button><span id="evo-result" class="small muted"></span></div></div>'+ 
     '<div class="m-foot"><button class="btn btn-ghost btn-sm" data-action="close-modal">Cancelar</button><button class="btn btn-primary btn-sm" data-action="save-evo">Salvar integração</button></div>');
 }
@@ -1332,7 +1333,34 @@ Views.conversas = function(){
     const q = chatFilter.q.toLowerCase();
     return !q || c.name.toLowerCase().includes(q);
   });
-  const sel = state.conversations.find(c=>c.id===state.selectedChat) || state.conversations[0];
+  const sel = state.conversations.find(c=>c.id===state.selectedChat) || (state.conversations[0]||null);
+  if(!sel){
+    return `
+  <div class="page-head">
+    <div><div class="ph-title">Conversas</div><div class="ph-sub">inbox sincronizada em tempo real com a conexão WhatsApp</div></div>
+    <div class="ph-actions">
+      ${state.integration.evolution.connected
+        ? '<span class="badge b-green" style="align-self:center">'+icon('check',11)+' WhatsApp sincronizado'+(inboxSync.lastSync?' · '+inboxSync.lastSync:'')+'</span>'
+        : '<button class="btn btn-soft btn-sm" data-action="wa-qr-connect">'+icon('phone',12)+' Conectar WhatsApp</button>'}
+      <button class="btn btn-ghost btn-sm" data-action="sync-inbox" ${state.integration.evolution.connected?'':'disabled'}><span data-ic="refresh" data-size="13"></span>Sincronizar</button>
+      <button class="btn btn-primary btn-sm" data-action="new-chat"><span data-ic="plus" data-size="13" style="color:#fff"></span>Nova conversa</button>
+    </div>
+  </div>
+  <div class="card" style="padding:48px 24px;text-align:center">
+    <div style="font-size:40px">💬</div>
+    <div class="bold mt8">Nenhuma conversa ainda</div>
+    <div class="small muted mt8" style="max-width:420px;margin-left:auto;margin-right:auto">
+      ${state.integration.evolution.connected
+        ? 'Clique em <b>Sincronizar</b> para importar os contatos do WhatsApp, ou inicie uma conversa com um contato do CRM.'
+        : 'Conecte seu WhatsApp via QR Code em Integrações → Evolution GO para começar a receber e enviar mensagens.'}
+    </div>
+    <div class="flex mt12" style="gap:8px;justify-content:center">
+      <button class="btn btn-soft btn-sm" data-action="new-chat"><span data-ic="plus" data-size="12"></span>Nova conversa</button>
+      ${state.integration.evolution.connected?'<button class="btn btn-primary btn-sm" data-action="sync-inbox"><span data-ic="refresh" data-size="12" style="color:#fff"></span>Sincronizar contatos</button>':''}
+    </div>
+    ${inboxSync.lastError?'<div class="small mt12" style="color:var(--red)">Erro na última sincronização: '+esc(inboxSync.lastError)+'</div>':''}
+  </div>`;
+  }
   const mkMsg = m=>{
     if(m.from==='link') return '<div class="bubble b-in" style="background:#E8EFFE;color:#1D4ED8;font-weight:600">'+icon('link',12)+' '+esc(m.text)+'</div>';
     if(m.from==='in') return '<div class="bubble b-in">'+esc(m.text)+'<div class="b-meta">'+m.time+'</div></div>';
@@ -1348,7 +1376,7 @@ Views.conversas = function(){
         ? '<span class="badge b-green" style="align-self:center">'+icon('check',11)+' WhatsApp sincronizado'+(inboxSync.lastSync?' · '+inboxSync.lastSync:'')+'</span>'
         : '<button class="btn btn-soft btn-sm" data-action="wa-qr-connect">'+icon('phone',12)+' Conectar WhatsApp</button>'}
       <button class="btn btn-ghost btn-sm" data-action="sync-inbox" ${state.integration.evolution.connected?'':'disabled'}><span data-ic="refresh" data-size="13"></span>${inboxSync.syncing?'Sincronizando...':'Sincronizar'}</button>
-      <button class="btn btn-ghost btn-sm"><span data-ic="filter" data-size="13"></span>Filtros</button>
+      <button class="btn btn-primary btn-sm" data-action="new-chat"><span data-ic="plus" data-size="13" style="color:#fff"></span>Nova conversa</button>
     </div>
   </div>
   <div class="chat-layout">
@@ -1410,7 +1438,7 @@ function persistState(){
   try{
     localStorage.setItem(STATE_KEY, JSON.stringify({
       contacts: state.contacts,
-      conversations: state.conversations.map(c=>({id:c.id,name:c.name,channel:c.channel,unread:0,ai:c.ai,status:c.status,time:c.time,messages:c.messages})),
+      conversations: state.conversations.map(c=>({id:c.id,name:c.name,channel:c.channel,remoteJid:c.remoteJid,real:!!c.real,unread:0,ai:c.ai,status:c.status,time:c.time,messages:c.messages})),
       pipeline: state.pipeline,
       workflows: state.workflows,
       agents: state.agents,
@@ -1433,7 +1461,7 @@ function loadPersisted(){
     const d = JSON.parse(raw);
     if(!d || !d.contacts || !d.contacts.length) return false;
     state.contacts = d.contacts;
-    state.conversations = d.conversations && d.conversations.length ? d.conversations : state.conversations;
+    state.conversations = d.conversations && d.conversations.length ? d.conversations.filter(x=>x.real) : [];
     if(d.pipeline && d.pipeline.stages) state.pipeline = d.pipeline;
     if(d.workflows) state.workflows = d.workflows;
     if(d.agents) state.agents = d.agents;
@@ -1517,19 +1545,28 @@ async function syncEvolutionInbox(){
   inboxSync.syncing = true;
   let added = 0;
   try{
+    // Backend Evolution GO: GET /user/contacts é o endpoint real de contatos.
+    const instToken = localStorage.getItem('nexus.evolution.instanceToken')||cfg.instance;
     let raw;
     try{
-      raw = await evolutionRequest('/chat/findContacts/'+encodeURIComponent(cfg.instance), {method:'POST', body: JSON.stringify({page:1,offset:100})});
+      raw = await evolutionRequest('/user/contacts', { apikey: instToken });
     }catch(e1){
-      raw = await evolutionRequest('/chat/findContacts/'+encodeURIComponent(cfg.instance)+'?page=1&offset=100', {method:'GET'});
+      try{
+        raw = await evolutionRequest('/user/contacts', {});
+      }catch(e2){
+        if(/401|403|authoriz/i.test(e1.message||'') && /401|403|authoriz/i.test(e2.message||''))
+          throw new Error('Sem permissão para ler contatos — verifique API key e token da instância');
+        raw = await evolutionRequest('/chat/findContacts/'+encodeURIComponent(cfg.instance), {method:'POST', body: JSON.stringify({page:1,offset:100})});
+      }
     }
-    const list = Array.isArray(raw) ? raw : ((raw&&(raw.contacts||raw.data))||[]);
+    const list = Array.isArray(raw) ? raw : ((raw&&(raw.data||raw.contacts))||[]);
+    if(!list.length) inboxSync.lastError = null;
     for(const ct of list){
       const jid = ct.remoteJid || ct.jid || '';
       if(!jid || jid.endsWith('@g.us') || jid.endsWith('@newsletter')) continue; // ignora grupos
       const phone = String(jid).split('@')[0].replace(/\D/g,'');
       if(!phone || phone.length < 10) continue;
-      const name = (ct.pushName || ct.name || '+'+phone).trim();
+      const name = (ct.pushName || ct.notify || ct.name || ct.vname || ct.verifiedName || ('+'+phone)).trim();
       // contato no CRM
       let contact = state.contacts.find(x=>String(x.phone||'').replace(/\D/g,'')===phone);
       if(!contact){
@@ -1562,29 +1599,53 @@ async function syncEvolutionInbox(){
   inboxSync.syncing = false;
 }
 
+/* Recebimento: o backend Go não expõe histórico via REST — mensagens chegam
+   via webhook do Evolution GO para o relay (api/whatsapp-relay.py). */
+function relayUrl(){ return localStorage.getItem('nexus.evolution.relayUrl') || '/api/whatsapp-relay.py'; }
+async function pollRelay(){
+  const url = relayUrl();
+  if(!url) return;
+  try{
+    const r = await fetch(url, {headers:{'Accept':'application/json'}});
+    if(!r.ok) return;
+    const d = await r.json().catch(()=>({}));
+    const msgs = d.messages || d.data || [];
+    if(!msgs.length) return;
+    let changed = false;
+    for(const m of msgs){
+      const jid = m.key && m.key.remoteJid;
+      const nm = normalizeEvoMsg(m);
+      if(!jid || !nm) continue;
+      const cid = 'wa-'+jid.split('@')[0];
+      let conv = state.conversations.find(x=>x.id===cid);
+      if(!conv){
+        const phone = jid.split('@')[0].replace(/\D/g,'');
+        const ct = state.contacts.find(x=>String(x.phone||'').replace(/\D/g,'')===phone);
+        conv = {id:cid, name:(ct&&ct.name)||('+'+phone), channel:'whatsapp', remoteJid:jid, unread:0, ai:false, status:'online', time:nm.time, messages:[], real:true};
+        state.conversations.unshift(conv);
+      }
+      if(!conv._seenIds) conv._seenIds = {};
+      const mid = (m.key && m.key.id) || (nm._ts+'|'+nm.text);
+      if(conv._seenIds[mid]) continue;
+      conv._seenIds[mid] = 1;
+      conv.messages.push({from:nm.from, text:nm.text, time:nm.time});
+      if(nm.from==='in') conv.unread = (conv.unread||0)+1;
+      conv.time = nm.time; conv.real = true;
+      changed = true;
+    }
+    if(changed){ persistState(); if(state.view==='conversas') render(); }
+  }catch(e){ /* relay ausente ou offline — silencioso */ }
+}
 async function loadRealMessages(conv, silent){
   if(!conv || !conv.remoteJid) return;
-  const cfg = state.integration.evolution;
-  if(!cfg.apiKey) return;
-  try{
-    let raw = await evolutionRequest('/chat/findMessages/'+encodeURIComponent(cfg.instance),
-      {method:'POST', body: JSON.stringify({remoteJid: conv.remoteJid, page:1, offset:40})});
-    const recs = Array.isArray(raw) ? raw : ((raw && raw.messages && (raw.messages.records||raw.messages)) || raw.data || []);
-    const msgs = recs.map(normalizeEvoMsg).filter(Boolean);
-    msgs.sort((a,b)=>(a._ts||0)-(b._ts||0));
-    if(msgs.length){
-      conv.messages = msgs.map(m=>({from:m.from,text:m.text,time:m.time}));
-      conv.real = true;
-      const lastIn = [...msgs].reverse().find(m=>m.from==='in');
-      if(lastIn) conv.time = lastIn.time;
-      persistState();
-      if(state.view==='conversas' && state.selectedChat===conv.id) render();
-    } else if(!silent && !conv.messages.length){
-      toast('Nenhuma mensagem encontrada nesta conversa ainda.','info');
-    }
-  }catch(e){
-    if(!silent) toast('Falha ao carregar mensagens: '+e.message,'warn');
-  }
+  const have = relayMessagesLocal(conv.remoteJid);
+  if(have){ if(state.view==='conversas' && state.selectedChat===conv.id) render(); return; }
+  if(!silent && !conv.messages.length)
+    toast('Sem mensagens recebidas ainda. Aponte o webhook do Evolution GO para o relay de recebimento (Integrações → Evolution GO → Config).','info');
+}
+function relayMessagesLocal(jid){
+  const conv = state.conversations.find(x=>x.remoteJid===jid);
+  return conv && conv.messages.length ? conv.messages : null;
 }
 
 function startInboxPolling(){
@@ -1593,10 +1654,9 @@ function startInboxPolling(){
   inboxSync.timer = setInterval(async ()=>{
     if(document.hidden) return;
     tick++;
-    const sel = state.conversations.find(c=>c.id===state.selectedChat);
-    // tempo real: mensagens da conversa aberta a cada 3s
-    if(sel && sel.real && sel.remoteJid) loadRealMessages(sel, true);
-    // chats/status: mais leves, a cada 15s / 30s
+    // tempo real: mensagens recebidas via relay a cada 3s
+    pollRelay();
+    // contatos/status: mais leves, a cada 15s / 30s
     if(tick % 5 === 0) syncEvolutionInbox();
     if(tick % 10 === 0) refreshEvolutionStatus();
   }, 3000);
@@ -2764,8 +2824,9 @@ const ACTIONS = {
     const instance=$('#evo-instance').value.trim()||'nexus-prod';
     if(!baseUrl||!apiKey){toast('Informe a URL e a API key do Evolution GO.','warn');return;}
     const instToken=$('#evo-token').value.trim()||instance;
+    const relay=$('#evo-relay').value.trim();
     state.integration.evolution={baseUrl,apiKey,instance,connected:true};
-    localStorage.setItem('nexus.evolution.baseUrl',baseUrl); localStorage.setItem('nexus.evolution.apiKey',apiKey); localStorage.setItem('nexus.evolution.instance',instance); localStorage.setItem('nexus.evolution.instanceToken',instToken);
+    localStorage.setItem('nexus.evolution.baseUrl',baseUrl); localStorage.setItem('nexus.evolution.apiKey',apiKey); localStorage.setItem('nexus.evolution.instance',instance); localStorage.setItem('nexus.evolution.instanceToken',instToken); if(relay!==null) localStorage.setItem('nexus.evolution.relayUrl',relay);
     closeModal(); toast('Evolution GO conectado ao Nexus.','success'); pushEvent('integration','Evolution GO configurado · '+instance); render();
   },
   'evo-test': async ()=>{
@@ -3037,6 +3098,41 @@ const ACTIONS = {
   },
   'toggle-evlog': ()=>{ const p=$('#ev-panel'); if(!p) return; const hidden = p.style.display==='none'; p.style.display = hidden?'':'none'; toast((hidden?'Exibindo':'Ocultando')+' painel de eventos','info'); },
   'open-chat': el=>{ state.selectedChat=el.dataset.id; render(); const cv=state.conversations.find(x=>x.id===state.selectedChat); if(cv) loadRealMessages(cv); },
+  'new-chat': ()=>{
+    const opts = state.contacts.filter(ct=>ct.phone && String(ct.phone).replace(/\D/g,'').length>=10)
+      .map(ct=>'<div class="cl-item" data-action="start-chat" data-id="'+esc(ct.id)+'">'+av(ct.name,36)+
+        '<div class="cli-mid"><div class="cli-name">'+esc(ct.name)+'</div><div class="cli-prev">'+esc(ct.phone)+'</div></div>'+
+        '<span class="badge b-green" style="font-size:9px">WhatsApp</span></div>').join('');
+    openModal('<div class="m-head"><h3>'+icon('message',16)+' Nova conversa</h3><div class="grow"></div><button class="icon-btn" data-action="close-modal"><span data-ic="x" data-size="14"></span></button></div>'+
+      '<div class="m-body">'+
+      '<div class="tb-search mb8"><span data-ic="search" data-size="13"></span><input id="nch-q" placeholder="Buscar contato..." oninput="nexusChatFilter()"></div>'+
+      '<div id="nch-list" style="max-height:320px;overflow:auto;display:flex;flex-direction:column;gap:4px">'+opts+'</div>'+
+      (!opts?'<div class="small muted mt12">Nenhum contato com telefone. Sincronize o WhatsApp ou crie um contato primeiro.</div>':'')+
+      '</div>');
+    window.nexusChatFilter = function(){
+      const q = ($('#nch-q')&&$('#nch-q').value||'').toLowerCase();
+      $('#nch-list').querySelectorAll('.cl-item').forEach(it=>{
+        it.style.display = it.textContent.toLowerCase().includes(q)?'':'none';
+      });
+    };
+  },
+  'start-chat': el=>{
+    const ct = state.contacts.find(x=>String(x.id)===String(el.dataset.id));
+    if(!ct || !ct.phone) return;
+    const phone = String(ct.phone).replace(/\D/g,'');
+    const jid = phone+'@s.whatsapp.net';
+    const cid = 'wa-'+phone;
+    let conv = state.conversations.find(x=>x.id===cid);
+    if(!conv){
+      conv = {id:cid, name:ct.name, channel:'whatsapp', remoteJid:jid, unread:0, ai:false, status:'online', time:'—', messages:[], real:true};
+      state.conversations.unshift(conv);
+      persistState();
+    }
+    closeModal();
+    state.selectedChat = cid;
+    go('conversas');
+    toast('Conversa com '+ct.name+' pronta — digite para enviar pelo WhatsApp.','success');
+  },
   'sync-inbox': ()=>{ if(!state.integration.evolution.connected){ toast('Conecte o WhatsApp primeiro (QR Code nas Integrações)','warn'); return; } syncEvolutionInbox().then(()=>{ const cv=state.conversations.find(x=>x.id===state.selectedChat); if(cv) loadRealMessages(cv); toast('Caixa de entrada sincronizada com o WhatsApp ✅','success'); }); },
   'send-chat': ()=>sendChat(),
   'quick-reply': el=>sendChat(el.textContent.trim()),
@@ -3159,7 +3255,7 @@ function init(){
   catch(e){ try{ localStorage.removeItem(STATE_KEY); }catch(_){} restored = false; }
   if(!restored){
     state.contacts = makeContacts();
-    state.conversations = makeConversations();
+    state.conversations = []; // inbox real: só conversas sincronizadas do WhatsApp
     makePipeline();
     state.workflows = makeWorkflows();
     state.agents = makeAgents();
@@ -3190,7 +3286,7 @@ function init(){
     ];
   }
   if(!state.customSegments) state.customSegments = [];
-  if(state.selectedChat!==null && !state.conversations.find(c=>c.id===state.selectedChat)) state.selectedChat = state.conversations[0].id;
+  if(state.selectedChat!==null && !state.conversations.find(c=>c.id===state.selectedChat)) state.selectedChat = state.conversations.length ? state.conversations[0].id : null;
   hydrateIcons(document);
   try{
     render();
@@ -3198,7 +3294,7 @@ function init(){
     console.error('Falha ao renderizar com dados salvos — restaurando padrão.', err);
     try{ localStorage.removeItem(STATE_KEY); }catch(_){}
     state.contacts = makeContacts();
-    state.conversations = makeConversations();
+    state.conversations = [];
     state.pipeline = {stages:[
       {id:'novo', name:'Novo Lead', color:'#6366F1', sum:0, items:[]},
       {id:'qualificado', name:'Qualificado', color:'#0284C7', sum:0, items:[]},
