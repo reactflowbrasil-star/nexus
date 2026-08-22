@@ -1,0 +1,13 @@
+{
+  "name": "nexus-crm",
+  "version": "1.0.0",
+  "description": "Nexus CRM — Plataforma de CRM e Automação Omnichannel (frontend estático + Evolution GO)",
+  "private": true,
+  "scripts": {
+    "start": "http-server . -p ${PORT:-8080} -a 0.0.0.0 -c-1 --silent",
+    "preview": "http-server . -p ${PORT:-8080} -a 0.0.0.0 -c-1 --silent"
+  },
+  "dependencies": {
+    "http-server": "^14.1.1"
+  }
+}

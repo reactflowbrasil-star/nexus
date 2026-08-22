@@ -1358,7 +1358,7 @@ Views.conversas = function(){
 };
 
 /* ================= PERSISTÊNCIA REAL (localStorage) ================= */
-const STATE_KEY = 'nexus.state.v1';
+const STATE_KEY = 'nexus.state.v2';
 function persistState(){
   try{
     localStorage.setItem(STATE_KEY, JSON.stringify({
@@ -2495,7 +2495,9 @@ document.querySelectorAll('.nav-item').forEach(n=>{
 
 /* ================= INIT ================= */
 function init(){
-  const restored = loadPersisted();
+  let restored = false;
+  try { restored = loadPersisted(); }
+  catch(e){ try{ localStorage.removeItem(STATE_KEY); }catch(_){} restored = false; }
   if(!restored){
     state.contacts = makeContacts();
     state.conversations = makeConversations();
@@ -2516,7 +2518,29 @@ function init(){
   state.admin = makeAdmin();
   if(!state.selectedChat || !state.conversations.find(c=>c.id===state.selectedChat)) state.selectedChat = state.conversations[0].id;
   hydrateIcons(document);
-  render();
+  try{
+    render();
+  }catch(err){
+    console.error('Falha ao renderizar com dados salvos — restaurando padrão.', err);
+    try{ localStorage.removeItem(STATE_KEY); }catch(_){}
+    state.contacts = makeContacts();
+    state.conversations = makeConversations();
+    state.pipeline = {stages:[
+      {id:'novo', name:'Novo Lead', color:'#6366F1', sum:0, items:[]},
+      {id:'qualificado', name:'Qualificado', color:'#0284C7', sum:0, items:[]},
+      {id:'proposta', name:'Proposta', color:'#D97706', sum:0, items:[]},
+      {id:'venda', name:'Venda', color:'#059669', sum:0, items:[]}
+    ]};
+    makePipeline();
+    state.workflows = makeWorkflows();
+    state.agents = makeAgents();
+    state.appointments = makeAppointments();
+    state.campaigns = makeCampaigns();
+    state.events = makeEvents();
+    state.selectedChat = state.conversations[0].id;
+    persistState();
+    render();
+  }
   refreshEvolutionStatus();
   setTimeout(()=>toast(restored?'Bem-vindo de volta! Seus dados foram carregados. 🚀':'Bem-vindo ao Nexus CRM! 🚀 Tudo que você criar fica salvo neste navegador.','success','Boas-vindas'), 600);
 }
