@@ -421,6 +421,30 @@ table.tbl{width:100%;border-collapse:collapse;font-size:12.8px}
 .empty-state .es-ico{width:56px;height:56px;border-radius:16px;background:#EEF0F6;display:flex;align-items:center;justify-content:center;margin:0 auto 12px}
 .empty-state .es-t{font-weight:700;font-size:13.5px;color:var(--muted)}
 .empty-state .es-s{font-size:12px;margin-top:3px}
+
+/* ============ QR CONNECTION ============ */
+.qr-wrap{display:flex;flex-direction:column;align-items:center;gap:16px;padding:10px 0}
+.qr-box{width:260px;height:260px;border-radius:16px;border:2px solid var(--border);background:#FAFAFE;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.qr-box img{width:100%;height:100%;object-fit:contain}
+.qr-box .qr-loading{display:flex;flex-direction:column;align-items:center;gap:10px;color:var(--muted);font-size:12px}
+.qr-box .qr-loading .qr-spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.qr-status{text-align:center;padding:6px 12px;border-radius:10px;font-size:12px;font-weight:600;width:100%}
+.qr-status.waiting{background:#FEF3C7;color:#B45309}
+.qr-status.connecting{background:#E8EFFE;color:#1D4ED8}
+.qr-status.success{background:#E7F6EC;color:#15803D}
+.qr-status.error{background:#FEEBEB;color:#B91C1C}
+.qr-status.info{background:#F4F2FF;color:#6D28D9}
+.qr-timer{font-size:11px;color:var(--faint);margin-top:-6px}
+.qr-actions{display:flex;gap:8px;width:100%}
+.qr-actions .btn{flex:1}
+.wa-instance-card{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--border);border-radius:12px;background:#FAFAFE}
+.wa-instance-card .wa-ico{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#25D366,#128C7E);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.wa-instance-card .wa-info{flex:1;min-width:0}
+.wa-instance-card .wa-name{font-weight:700;font-size:13px}
+.wa-instance-card .wa-detail{font-size:11px;color:var(--muted);margin-top:1px}
+.wa-instance-card .wa-actions{display:flex;gap:5px;flex-shrink:0}
+.modal-lg{width:520px!important}
 </style>
 </head>
 <body>
@@ -1819,7 +1843,7 @@ Views.integracoes = function(){
     <div class="ph-actions"><button class="btn btn-ghost btn-sm"><span data-ic="webhook" data-size="13"></span>Webhooks</button></div>
   </div>
   <div class="grid g4">
-    ${ints.map(i=>'<div class="card int-card" '+(i.n==='Evolution GO'?'data-action="configure-int" style="cursor:pointer"':'')+'><div class="between"><span class="int-logo" style="background:'+i.bg+'">'+(i.n==='Meta Ads'?'f':i.n==='WhatsApp Cloud API'?'WA':i.n==='Evolution GO'?'EVO':i.n==='Google Agenda'?'G':i.n==='Instagram'?'IG':i.n==='Facebook Messenger'?'f':i.n==='Zapier'?'Z':'{ }')+'</span><label class="switch"><input type="checkbox" '+(i.on?'checked':'')+' data-action="int-toggle"><span class="sl"></span></label></div><div><div class="int-name">'+i.n+'</div><div class="int-desc">'+i.d+'</div></div><span class="badge '+(i.on?'b-green':'b-gray')+'">'+(i.n==='Evolution GO'?(state.integration.evolution.connected?'Conectado':'configurar'):(i.on?'Conectado':i.s))+'</span></div>').join('')}
+    ${ints.map(i=>{const isEvo=i.n==='Evolution GO';const evoC=state.integration.evolution.connected;return '<div class="card int-card" '+(isEvo?'data-action="configure-int" style="cursor:pointer"':'')+'><div class="between"><span class="int-logo" style="background:'+i.bg+'">'+(i.n==='Meta Ads'?'f':i.n==='WhatsApp Cloud API'?'WA':isEvo?'EVO':i.n==='Google Agenda'?'G':i.n==='Instagram'?'IG':i.n==='Facebook Messenger'?'f':i.n==='Zapier'?'Z':'{ }')+'</span><label class="switch"><input type="checkbox" '+(i.on?'checked':'')+' data-action="int-toggle"><span class="sl"></span></label></div><div><div class="int-name">'+i.n+'</div><div class="int-desc">'+i.d+'</div></div><span class="badge '+(isEvo?(evoC?'b-green':'b-amber'):(i.on?'b-green':'b-gray'))+'">'+(isEvo?(evoC?'Conectado':'Clique para conectar'):(i.on?'Conectado':i.s))+'</span>'+(isEvo?'<div class="flex mt8" style="gap:6px;justify-content:flex-end;width:100%">'+(evoC?'<button class="btn btn-danger btn-sm" data-action="wa-disconnect" data-instance="'+esc(state.integration.evolution.instance)+'"><span data-ic="power" data-size="11"></span>Desconectar</button>':'<button class="btn btn-primary btn-sm" data-action="wa-qr-connect" data-instance="'+esc(state.integration.evolution.instance)+'"><span data-ic="phone" data-size="11" style="color:#fff"></span>Conectar WhatsApp</button>')+'<button class="btn btn-ghost btn-sm" data-action="configure-int"><span data-ic="settings" data-size="11"></span>Config</button></div>':'')+'</div>';}).join('')}
   </div>`;
 };
 
@@ -2015,6 +2039,105 @@ const AGENT_REPLIES = [
   'Perfeito! Já registrei no CRM e vou acompanhar seu caso. Qualquer dúvida é só chamar! 🤝'
 ];
 
+/* ================= WHATSAPP QR CONNECTION ================= */
+let waQRTimer = null;
+let waQRCountdown = null;
+
+function showWhatsAppQRModal(instanceName) {
+  openModal(
+    '<div class="m-head"><h3>' + icon('phone', 16, '#25D366') + ' Conectar WhatsApp</h3><div class="grow"></div>' +
+    '<button class="icon-btn" data-action="close-qr-modal"><span data-ic="x" data-size="14"></span></button></div>' +
+    '<div class="m-body" style="display:flex;flex-direction:column;align-items:center;gap:12px">' +
+    '<div class="qr-wrap" id="qr-wrap">' +
+    '<div class="qr-box" id="qr-box"><div class="qr-loading"><div class="qr-spinner"></div><span>Preparando conexao...</span></div></div>' +
+    '<div class="qr-timer" id="qr-timer"></div>' +
+    '<div class="qr-status info" id="qr-status">Iniciando instancia...</div>' +
+    '</div>' +
+    '<div class="small muted" style="text-align:center;line-height:1.5">' +
+    '<b>Como conectar:</b><br>1. Abra WhatsApp no celular<br>2. Va em <b>Aparelhos conectados</b><br>3. Toque em <b>Conectar aparelho</b><br>4. Aponte a camera para o QR Code' +
+    '</div></div>' +
+    '<div class="m-foot" style="justify-content:space-between"><button class="btn btn-ghost btn-sm" data-action="close-qr-modal">Cancelar</button>' +
+    '<div class="flex" style="gap:6px"><button class="btn btn-primary btn-sm" data-action="qr-connect" data-instance="' + esc(instanceName) + '"><span data-ic="phone" data-size="12" style="color:#fff"></span>Conectar</button></div></div>'
+  );
+  hydrateIcons($('#modal-root'));
+  startQRFlow(instanceName);
+}
+
+async function startQRFlow(instanceName) {
+  const statusEl = document.getElementById('qr-status');
+  const boxEl = document.getElementById('qr-box');
+  const timerEl = document.getElementById('qr-timer');
+  if (!statusEl || !boxEl) return;
+  try {
+    statusEl.className = 'qr-status connecting';
+    statusEl.textContent = 'Iniciando instancia...';
+    try { await evolutionRequest('/instance/create', { method: 'POST', body: JSON.stringify({ name: instanceName, token: instanceName }) }); } catch(e){}
+    statusEl.textContent = 'Conectando...';
+    await evolutionRequest('/instance/connect', { method: 'POST', body: JSON.stringify({}) });
+    statusEl.className = 'qr-status waiting';
+    statusEl.textContent = 'Escaneie o QR Code com seu WhatsApp';
+    let connected = false;
+    const poll = async () => {
+      if (!document.getElementById('qr-box') || connected) return;
+      try {
+        const res = await evolutionRequest('/instance/qr');
+        if (res.data && res.data.code) {
+          const qrData = res.data.code;
+          boxEl.innerHTML = '<img src="' + (qrData.startsWith('data:') ? qrData : 'data:image/png;base64,' + qrData) + '" alt="QR Code WhatsApp">';
+          startQRTimer(timerEl);
+        }
+        const st = await evolutionRequest('/instance/status');
+        if (st.data && st.data.connected && st.data.loggedIn) {
+          connected = true; if (waQRTimer) clearTimeout(waQRTimer);
+          showQRSuccess(statusEl, st.data); return;
+        }
+      } catch(e){}
+      if (!connected && document.getElementById('qr-box')) waQRTimer = setTimeout(poll, 3000);
+    };
+    setTimeout(poll, 2000);
+  } catch (err) {
+    statusEl.className = 'qr-status error';
+    statusEl.textContent = 'Erro: ' + (err.message || 'Falha ao conectar');
+    boxEl.innerHTML = '<div class="qr-loading"><span style="color:var(--red)">' + esc(err.message) + '</span></div>';
+  }
+}
+
+function startQRTimer(timerEl) {
+  if (waQRCountdown) clearInterval(waQRCountdown);
+  let remaining = 40;
+  if (timerEl) timerEl.textContent = 'QR Code expira em ' + remaining + 's';
+  waQRCountdown = setInterval(() => {
+    remaining--;
+    if (timerEl) { timerEl.textContent = 'QR Code expira em ' + remaining + 's'; if (remaining <= 10) timerEl.style.color = 'var(--red)'; }
+    if (remaining <= 0) { clearInterval(waQRCountdown); if (timerEl) timerEl.textContent = 'QR Code expirado - gerando novo...'; }
+  }, 1000);
+}
+
+function showQRSuccess(statusEl, data) {
+  if (waQRCountdown) clearInterval(waQRCountdown);
+  statusEl.className = 'qr-status success';
+  statusEl.textContent = 'WhatsApp conectado com sucesso!';
+  const boxEl = document.getElementById('qr-box');
+  if (boxEl) boxEl.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;gap:8px;color:#15803D"><span style="font-size:40px">&#10003;</span><span style="font-weight:700;font-size:13px">Conectado</span>' + (data.name ? '<span class="small muted">' + esc(data.name) + '</span>' : '') + (data.jid ? '<span class="tiny muted" style="word-break:break-all">' + esc(data.jid) + '</span>' : '') + '</div>';
+  const timerEl2 = document.getElementById('qr-timer');
+  if (timerEl2) timerEl2.textContent = '';
+  state.integration.evolution.connected = true;
+  localStorage.setItem('nexus.evolution.connected', 'true');
+  const foot = document.querySelector('.m-foot');
+  if (foot) { foot.innerHTML = '<div></div><div class="flex" style="gap:6px"><button class="btn btn-danger btn-sm" data-action="wa-disconnect" data-instance="' + esc(state.integration.evolution.instance) + '"><span data-ic="power" data-size="12"></span>Desconectar</button><button class="btn btn-primary btn-sm" data-action="close-qr-modal">Fechar</button></div>'; hydrateIcons(foot); }
+  pushEvent('integration', 'WhatsApp conectado via Evolution GO');
+  toast('WhatsApp conectado com sucesso!', 'success');
+}
+
+async function disconnectWhatsApp(instanceName) {
+  try {
+    await evolutionRequest('/instance/disconnect', { method: 'POST', body: JSON.stringify({}) });
+    state.integration.evolution.connected = false;
+    localStorage.removeItem('nexus.evolution.connected');
+    toast('WhatsApp desconectado', 'warn');
+  } catch (e) { toast('Erro ao desconectar: ' + e.message, 'warn'); }
+}
+
 /* ================= ACTIONS ================= */
 const ACTIONS = {
   'go-view': el=>go(el.dataset.view),
@@ -2043,6 +2166,11 @@ const ACTIONS = {
   'new-tenant': ()=>toast('Nova empresa (demo) — provisioning multi-tenant simulado','info'),
   'int-toggle': el=>{ const on = el.checked; toast((on?'Conectado':'Desconectado')+' (simulação de integração)','info'); },
   'configure-int': ()=>evolutionConfigModal(),
+  'close-qr-modal': ()=>{ if(waQRTimer) clearTimeout(waQRTimer); if(waQRCountdown) clearInterval(waQRCountdown); closeModal(); render(); },
+  'wa-qr-connect': el=>{ const inst=el.dataset.instance||state.integration.evolution.instance||'nexus-prod'; showWhatsAppQRModal(inst); },
+  'qr-connect': el=>{ const inst=el.dataset.instance||state.integration.evolution.instance||'nexus-prod'; if(waQRTimer) clearTimeout(waQRTimer); if(waQRCountdown) clearInterval(waQRCountdown); startQRFlow(inst); },
+  'qr-refresh': el=>{ const inst=el.dataset.instance||state.integration.evolution.instance||'nexus-prod'; if(waQRTimer) clearTimeout(waQRTimer); if(waQRCountdown) clearInterval(waQRCountdown); startQRFlow(inst); },
+  'wa-disconnect': async el=>{ const inst=el.dataset.instance||state.integration.evolution.instance; await disconnectWhatsApp(inst); if(waQRTimer) clearTimeout(waQRTimer); if(waQRCountdown) clearInterval(waQRCountdown); closeModal(); render(); },
   'save-evo': ()=>{
     const baseUrl=$('#evo-url').value.trim().replace(/\/$/,'');
     const apiKey=$('#evo-key').value.trim();
