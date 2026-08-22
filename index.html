@@ -1589,16 +1589,105 @@ async function loadRealMessages(conv, silent){
 
 function startInboxPolling(){
   if(inboxSync.timer) clearInterval(inboxSync.timer);
+  let tick = 0;
   inboxSync.timer = setInterval(async ()=>{
     if(document.hidden) return;
-    await refreshEvolutionStatus();
-    await syncEvolutionInbox();
+    tick++;
     const sel = state.conversations.find(c=>c.id===state.selectedChat);
-    if(sel && sel.real) loadRealMessages(sel, true);
-  }, 12000);
+    // tempo real: mensagens da conversa aberta a cada 3s
+    if(sel && sel.real && sel.remoteJid) loadRealMessages(sel, true);
+    // chats/status: mais leves, a cada 15s / 30s
+    if(tick % 5 === 0) syncEvolutionInbox();
+    if(tick % 10 === 0) refreshEvolutionStatus();
+  }, 3000);
 }
 
-/* ================= ROUTER ================= */
+/* ================= CONFIG DE INTEGRAÇÕES ================= */
+const INT_FIELDS = {
+  'Meta Ads': [['Pixel ID','pixelId'],['Access Token','accessToken'],['Conta de anúncios (act_)','adAccountId']],
+  'WhatsApp Cloud API': [['Phone Number ID','phoneId'],['WABA ID','wabaId'],['Token permanente','token'],['Verificação do webhook (verify token)','verifyToken']],
+  'Google Agenda': [['Calendar ID','calendarId','primary'],['Client ID OAuth','clientId'],['Client Secret','clientSecret']],
+  'Instagram': [['Account ID','accountId'],['Username','username'],['Token de acesso','token']],
+  'Facebook Messenger': [['Page ID','pageId'],['Page Access Token','token']],
+  'Zapier': [['URL do webhook Zapier','webhookUrl']],
+  'Webhooks': [['URL de saída (eventos)','outUrl'],['Secret (header X-Nexus-Signature)','secret']]
+};
+function intCfgAll(){ try{ return JSON.parse(localStorage.getItem('nexus.integrations.cfg')||'{}'); }catch(e){ return {}; } }
+function intCfgSave(name, data){
+  const all = intCfgAll(); all[name] = data;
+  try{ localStorage.setItem('nexus.integrations.cfg', JSON.stringify(all)); }catch(e){}
+}
+function genericIntModal(name){
+  const fields = INT_FIELDS[name] || [];
+  const cur = intCfgAll()[name] || {};
+  openModal('<div class="m-head"><h3>'+esc(name)+' — Configuração</h3><div class="grow"></div><button class="icon-btn" data-action="close-modal"><span data-ic="x" data-size="14"></span></button></div>'+
+    '<div class="m-body">'+fields.map(f=>'<div class="field'+(f[0]==='Pixel ID'?'':' mt12')+'"><span class="f-label">'+esc(f[0])+'</span><input class="f-input" id="if-'+esc(f[1])+'" type="'+(/token|secret/i.test(f[0])?'password':'text')+'" value="'+esc(cur[f[1]]||f[2]||'')+'"></div>').join('')+
+    '<div class="small muted mt8">As credenciais ficam somente neste navegador.</div></div>'+
+    '<div class="m-foot"><button class="btn btn-ghost btn-sm" data-action="close-modal">Cancelar</button><button class="btn btn-primary btn-sm" data-action="save-int-cfg" data-name="'+esc(name)+'">Salvar integração</button></div>');
+}
+
+/* ================= GEMINI (agentes IA) ================= */
+let GEMINI_MODELS = [];
+function geminiCfg(){ return { apiKey: localStorage.getItem('nexus.gemini.key')||'', model: localStorage.getItem('nexus.gemini.model')||'' }; }
+
+async function geminiListModels(){
+  const { apiKey } = geminiCfg();
+  if(!apiKey) throw new Error('Informe a API key do Gemini.');
+  const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000&key='+encodeURIComponent(apiKey));
+  const d = await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error((d.error&&d.error.message)||('Gemini respondeu HTTP '+r.status));
+  const gen = (d.models||[])
+    .filter(m=>(m.supportedGenerationMethods||[]).includes('generateContent'))
+    .map(m=>m.name.replace(/^models\//,''))
+    .filter(n=>/gemini/.test(n));
+  if(!gen.length) throw new Error('Nenhum modelo Gemini disponível para esta key.');
+  // validação automática de modelos recentes: geração mais nova primeiro
+  const genNum = s => { const m1 = s.match(/gemini-(\d+)/); return m1 ? parseInt(m1[1]) : 0; };
+  const isFlash = s => /flash/.test(s);
+  gen.sort((a,b)=> genNum(b)-genNum(a) || (isFlash(b)-isFlash(a)) || a.localeCompare(b));
+  GEMINI_MODELS = gen;
+  return gen;
+}
+
+async function geminiGenerate(prompt){
+  const cfg = geminiCfg();
+  if(!cfg.apiKey || !cfg.model) return null;
+  const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(cfg.model)+':generateContent?key='+encodeURIComponent(cfg.apiKey), {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ contents:[{ role:'user', parts:[{text:prompt}] }], generationConfig:{ temperature:0.4, maxOutputTokens:512 } })
+  });
+  const d = await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error((d.error&&d.error.message)||('Gemini HTTP '+r.status));
+  const cand = d.candidates && d.candidates[0];
+  const txt = cand && cand.content && cand.content.parts ? cand.content.parts.map(p=>p.text||'').join('') : '';
+  return txt.trim() || null;
+}
+
+async function geminiAgentReply(userMsg){
+  const detail = state.agents.find(a=>a.id===state.agentDetail);
+  const sys = 'Você é '+(detail?detail.name:'um SDR IA de vendas')+' no CRM Nexus. '+(detail&&detail.obj?('Seu objetivo: '+detail.obj):'Objetivo: qualificar leads, apresentar planos e agendar demonstrações.')+' Responda em português, de forma curta e natural, como um atendente de WhatsApp.';
+  try{
+    const txt = await geminiGenerate(sys+'\n\nMensagem do lead: '+userMsg);
+    if(txt) return txt;
+  }catch(e){ toast('Gemini: '+e.message,'warn'); }
+  return AGENT_REPLIES[Math.floor(Math.random()*AGENT_REPLIES.length)];
+}
+
+function geminiConfigModal(){
+  const cfg = geminiCfg();
+  openModal('<div class="m-head"><h3>'+icon('sparkles',16,'#6D28D9')+' Gemini — Modelos dos Agentes IA</h3><div class="grow"></div><button class="icon-btn" data-action="close-modal"><span data-ic="x" data-size="14"></span></button></div>'+
+    '<div class="m-body">'+
+    '<div class="field"><span class="f-label">API Key do Google AI Studio</span><input class="f-input" id="gm-key" type="password" value="'+esc(cfg.apiKey)+'" placeholder="AIza..."></div>'+
+    '<div class="flex mt12" style="gap:8px"><button class="btn btn-soft btn-sm" data-action="gemini-fetch-models">Validar key e buscar modelos</button><span id="gm-status" class="small muted">'+(cfg.model?('Modelo atual: '+esc(cfg.model)):'Nenhum modelo selecionado')+'</span></div>'+
+    '<div class="field mt12" id="gm-model-wrap" style="'+(GEMINI_MODELS.length?'':'display:none')+'"><span class="f-label">Modelo (validado automaticamente — recentes primeiro)</span><select class="f-select" id="gm-model">'+
+    GEMINI_MODELS.map(m=>'<option value="'+esc(m)+'"'+(m===cfg.model?' selected':'')+'>'+esc(m)+'</option>').join('')+
+    '</select></div>'+
+    '<div class="small muted mt8">A key fica somente neste navegador. A lista vem direto da API do Google — só aparecem modelos reais e disponíveis para sua conta.</div>'+
+    '</div>'+
+    '<div class="m-foot"><button class="btn btn-ghost btn-sm" data-action="close-modal">Cancelar</button><button class="btn btn-primary btn-sm" data-action="save-gemini">Salvar</button></div>');
+}
+
+/* ================= INBOX REAL (sincronização com Evolution GO) ================= */
 const VIEW_TITLES = {dashboard:'Dashboard', contatos:'Contatos', pipeline:'Pipeline', conversas:'Conversas', workflows:'Workflows', agentes:'Agentes IA', agenda:'Agenda', campanhas:'Campanhas', forms:'Forms', landings:'Landing Pages', analytics:'Analytics', integracoes:'Integrações', admin:'SaaS Admin', segmentos:'Segmentos', empresas:'Empresas'};
 
 function render(){
@@ -1806,10 +1895,11 @@ Views.agentes = function(){
         <div class="card">
           <div class="card-h"><h3>Modelo</h3></div>
           <div class="card-b">
-            <div class="between"><span class="small muted">Modelo base</span><b class="small">gpt-4o-mini</b></div>
+            <div class="between"><span class="small muted">Modelo base</span><b class="small">${geminiCfg().model||'não configurado'}</b></div>
             <div class="between mt8"><span class="small muted">Temperatura</span><b class="small">0,4</b></div>
             <div class="between mt8"><span class="small muted">Máx. tokens/resposta</span><b class="small">512</b></div>
             <div class="between mt8"><span class="small muted">Idiomas</span><b class="small">pt-BR, en</b></div>
+            <button class="btn btn-soft btn-sm mt8" data-action="gemini-config" style="width:100%;justify-content:center">${geminiCfg().model?'Trocar modelo Gemini':'Configurar Gemini'}</button>
           </div>
         </div>
         <div class="card" style="background:#F4F2FF;border-color:#E4DFFF">
@@ -1825,7 +1915,7 @@ Views.agentes = function(){
   <div class="page-head">
     <div><div class="ph-title">Agentes IA</div><div class="ph-sub">Agentes autônomos que atendem, qualificam e executam ações no CRM</div></div>
     <div class="ph-actions">
-      <button class="btn btn-ghost btn-sm"><span data-ic="sliders" data-size="13"></span>Modelos</button>
+      <button class="btn btn-ghost btn-sm" data-action="gemini-config"><span data-ic="sliders" data-size="13"></span>Modelos</button>
       <button class="btn btn-primary btn-sm" data-action="new-agent"><span data-ic="plus" data-size="13" style="color:#fff"></span>Novo agente</button>
     </div>
   </div>
@@ -2097,7 +2187,7 @@ Views.integracoes = function(){
     <div class="ph-actions"><button class="btn btn-ghost btn-sm"><span data-ic="webhook" data-size="13"></span>Webhooks</button></div>
   </div>
   <div class="grid g4">
-    ${ints.map(i=>{const isEvo=i.n==='Evolution GO';const evoC=state.integration.evolution.connected;const on=(INT_MAP[i.n]!==undefined?INT_MAP[i.n]:i.on);return '<div class="card int-card" data-int="'+esc(i.n)+'" '+(isEvo?'data-action="configure-int" style="cursor:pointer"':'')+'>'+'<div class="between"><span class="int-logo" style="background:'+i.bg+'">'+(i.n==='Meta Ads'?'f':i.n==='WhatsApp Cloud API'?'WA':isEvo?'EVO':i.n==='Google Agenda'?'G':i.n==='Instagram'?'IG':i.n==='Facebook Messenger'?'f':i.n==='Zapier'?'Z':'{ }')+'</span><label class="switch"><input type="checkbox" '+(on?'checked':'')+' data-action="int-toggle"><span class="sl"></span></label></div><div><div class="int-name">'+i.n+'</div><div class="int-desc">'+i.d+'</div></div><span class="badge '+(isEvo?(evoC?'b-green':'b-amber'):(i.on?'b-green':'b-gray'))+'">'+(isEvo?(evoC?'Conectado':'Clique para conectar'):(on?'Conectado':'Desconectado'))+'</span>'+(isEvo?'<div class="flex mt8" style="gap:6px;justify-content:flex-end;width:100%">'+(evoC?'<button class="btn btn-danger btn-sm" data-action="wa-disconnect" data-instance="'+esc(state.integration.evolution.instance)+'"><span data-ic="power" data-size="11"></span>Desconectar</button>':'<button class="btn btn-primary btn-sm" data-action="wa-qr-connect" data-instance="'+esc(state.integration.evolution.instance)+'"><span data-ic="phone" data-size="11" style="color:#fff"></span>Conectar WhatsApp</button>')+'<button class="btn btn-ghost btn-sm" data-action="configure-int"><span data-ic="settings" data-size="11"></span>Config</button></div>':'')+'</div>';}).join('')}
+    ${ints.map(i=>{const isEvo=i.n==='Evolution GO';const evoC=state.integration.evolution.connected;const on=(INT_MAP[i.n]!==undefined?INT_MAP[i.n]:i.on);return '<div class="card int-card" data-int="'+esc(i.n)+'" '+(isEvo?'data-action="configure-int" style="cursor:pointer"':'')+'>'+'<div class="between"><span class="int-logo" style="background:'+i.bg+'">'+(i.n==='Meta Ads'?'f':i.n==='WhatsApp Cloud API'?'WA':isEvo?'EVO':i.n==='Google Agenda'?'G':i.n==='Instagram'?'IG':i.n==='Facebook Messenger'?'f':i.n==='Zapier'?'Z':'{ }')+'</span><label class="switch"><input type="checkbox" '+(on?'checked':'')+' data-action="int-toggle"><span class="sl"></span></label></div><div><div class="int-name">'+i.n+'</div><div class="int-desc">'+i.d+'</div></div><span class="badge '+(isEvo?(evoC?'b-green':'b-amber'):(i.on?'b-green':'b-gray'))+'">'+(isEvo?(evoC?'Conectado':'Clique para conectar'):(on?'Conectado':'Desconectado'))+'</span>'+(isEvo?'<div class="flex mt8" style="gap:6px;justify-content:flex-end;width:100%">'+(evoC?'<button class="btn btn-danger btn-sm" data-action="wa-disconnect" data-instance="'+esc(state.integration.evolution.instance)+'"><span data-ic="power" data-size="11"></span>Desconectar</button>':'<button class="btn btn-primary btn-sm" data-action="wa-qr-connect" data-instance="'+esc(state.integration.evolution.instance)+'"><span data-ic="phone" data-size="11" style="color:#fff"></span>Conectar WhatsApp</button>')+'<button class="btn btn-ghost btn-sm" data-action="configure-int"><span data-ic="settings" data-size="11"></span>Config</button></div>':'<div class="flex mt8" style="gap:6px;justify-content:flex-end;width:100%"><button class="btn btn-ghost btn-sm" data-action="configure-int" data-name="'+esc(i.n)+'"><span data-ic="settings" data-size="11"></span>Config</button></div>')+'</div>';}).join('')}
   </div>
   ${integracoesN8nCard()}
 `;
@@ -2253,6 +2343,7 @@ function sendChat(text){
       } else {
         pushEvent('wa','Mensagem enviada via WhatsApp para '+conv.name);
         n8nEmit('whatsapp.message_sent',{to:conv.name, text:msg});
+        loadRealMessages(conv, true); // confirmação real chega em segundos
       }
       persistState();
     });
@@ -2309,7 +2400,7 @@ function bindKanban(){
     });
   });
 }
-function agentChat(replyText){
+function agentChat(){
   const modal = $('#modal-root .modal');
   if(!modal) return;
   const input = modal.querySelector('#ag-input');
@@ -2321,18 +2412,19 @@ function agentChat(replyText){
   b.className='bubble b-out'; b.style.maxWidth='80%';
   b.innerHTML = esc(msg)+'<div class="b-meta">'+nowTime()+'</div>';
   body.appendChild(b); body.scrollTop=body.scrollHeight;
-  setTimeout(()=>{
-    const tp=document.createElement('div');
-    tp.className='typing'; tp.innerHTML='<i></i><i></i><i></i>';
-    body.appendChild(tp); body.scrollTop=body.scrollHeight;
-    setTimeout(()=>{
-      tp.remove();
-      const rb=document.createElement('div');
-      rb.className='bubble b-ai'; rb.style.maxWidth='80%';
-      rb.innerHTML='<span class="b-ai-tag">'+icon('bot',9)+' IA</span><div>'+esc(replyText)+'</div><div class="b-meta">'+nowTime()+' · 0,8s</div>';
-      body.appendChild(rb); body.scrollTop=body.scrollHeight;
-    },900);
-  },500);
+  const tp=document.createElement('div');
+  tp.className='typing'; tp.innerHTML='<i></i><i></i><i></i>';
+  body.appendChild(tp); body.scrollTop=body.scrollHeight;
+  const t0 = Date.now();
+  geminiAgentReply(msg).then(replyText=>{
+    if(!document.body.contains(tp)) return;
+    tp.remove();
+    const secs = ((Date.now()-t0)/1000).toFixed(1);
+    const rb=document.createElement('div');
+    rb.className='bubble b-ai'; rb.style.maxWidth='80%';
+    rb.innerHTML='<span class="b-ai-tag">'+icon('bot',9)+' IA</span><div>'+esc(replyText)+'</div><div class="b-meta">'+nowTime()+' · '+secs+'s'+(geminiCfg().model?' · Gemini':'')+'</div>';
+    body.appendChild(rb); body.scrollTop=body.scrollHeight;
+  });
 }
 const AGENT_REPLIES = [
   'Olá! 👋 Sou o SDR IA da Nexus. Posso te ajudar com planos, valores e agendamento de demonstrações.',
@@ -2617,7 +2709,50 @@ const ACTIONS = {
     pushEvent('integration', name+' '+(el.checked?'ativada':'desativada'));
     render();
   },
-  'configure-int': ()=>evolutionConfigModal(),
+  'configure-int': el=>{ const n=el.dataset.name; if(!n||n==='Evolution GO') evolutionConfigModal(); else genericIntModal(n); },
+  'save-int-cfg': el=>{
+    const name=el.dataset.name;
+    const fields=INT_FIELDS[name]||[];
+    const data={};
+    fields.forEach(f=>{ const v=$('#if-'+f[1]); if(v) data[f[1]]=v.value.trim(); });
+    intCfgSave(name,data);
+    INT_MAP[name]=true;
+    try{ localStorage.setItem('nexus.integrations', JSON.stringify(INT_MAP)); }catch(e){}
+    closeModal(); toast(name+' configurado com sucesso ✅','success');
+    pushEvent('integration',name+' configurado'); render();
+  },
+  'gemini-config': ()=>geminiConfigModal(),
+  'gemini-fetch-models': async ()=>{
+    localStorage.setItem('nexus.gemini.key', $('#gm-key').value.trim());
+    const st=$('#gm-status');
+    if(st) st.textContent='Validando key e buscando modelos...';
+    try{
+      await geminiListModels();
+      geminiConfigModal.__keep = true;
+      // reabre o modal já populado
+      const cfg=geminiCfg(); GEMINI_MODELS=GEMINI_MODELS;
+      openModal('<div class="m-head"><h3>'+icon('sparkles',16,'#6D28D9')+' Gemini — Modelos dos Agentes IA</h3><div class="grow"></div><button class="icon-btn" data-action="close-modal"><span data-ic="x" data-size="14"></span></button></div>'+
+        '<div class="m-body">'+
+        '<div class="field"><span class="f-label">API Key do Google AI Studio</span><input class="f-input" id="gm-key" type="password" value="'+esc(cfg.apiKey)+'" placeholder="AIza..."></div>'+
+        '<div class="flex mt12" style="gap:8px"><button class="btn btn-soft btn-sm" data-action="gemini-fetch-models">Validar key e buscar modelos</button><span id="gm-status" class="small" style="color:#15803D">'+GEMINI_MODELS.length+' modelos válidos encontrados ✓</span></div>'+
+        '<div class="field mt12"><span class="f-label">Modelo (validado automaticamente — recentes primeiro)</span><select class="f-select" id="gm-model">'+
+        GEMINI_MODELS.map(m=>'<option value="'+esc(m)+'"'+(m===cfg.model?' selected':'')+'>'+esc(m)+'</option>').join('')+
+        '</select></div>'+
+        '<div class="small muted mt8">A lista vem direto da API do Google — só aparecem modelos reais e disponíveis para sua conta.</div>'+
+        '</div>'+
+        '<div class="m-foot"><button class="btn btn-ghost btn-sm" data-action="close-modal">Cancelar</button><button class="btn btn-primary btn-sm" data-action="save-gemini">Salvar</button></div>');
+    }catch(e){
+      if(st) st.innerHTML='<span style="color:var(--red)">'+esc(e.message)+'</span>';
+    }
+  },
+  'save-gemini': ()=>{
+    const k=$('#gm-key').value.trim(); const m=$('#gm-model') ? $('#gm-model').value : '';
+    if(!k){ toast('Informe a API key.','warn'); return; }
+    if(!m){ toast('Busque e selecione um modelo válido.','warn'); return; }
+    try{ localStorage.setItem('nexus.gemini.key',k); localStorage.setItem('nexus.gemini.model',m); }catch(e){}
+    closeModal(); toast('Gemini configurado — modelo '+m,'success');
+    pushEvent('agent','Modelo dos agentes IA: '+m); render();
+  },
   'close-qr-modal': ()=>{ if(waQRTimer) clearTimeout(waQRTimer); if(waQRCountdown) clearInterval(waQRCountdown); closeModal(); render(); },
   'wa-qr-connect': el=>{ const inst=el.dataset.instance||state.integration.evolution.instance||'nexus-prod'; showWhatsAppQRModal(inst); },
   'qr-connect': el=>{ const inst=el.dataset.instance||state.integration.evolution.instance||'nexus-prod'; if(waQRTimer) clearTimeout(waQRTimer); if(waQRCountdown) clearInterval(waQRCountdown); startQRFlow(inst); },
@@ -2739,9 +2874,9 @@ const ACTIONS = {
       '<div id="ag-body" style="display:flex;flex-direction:column;gap:10px"></div>'+
       '</div>'+
       '<div class="composer" style="border-top:1px solid var(--border)"><input id="ag-input" class="f-input" placeholder="Digite como se fosse um lead..."><button class="btn btn-primary btn-sm" data-action="ag-send">Enviar</button></div>');
-    const inp=$('#ag-input'); if(inp) inp.addEventListener('keydown',e=>{ if(e.key==='Enter') agentChat(AGENT_REPLIES[Math.floor(Math.random()*AGENT_REPLIES.length)]); });
+    const inp=$('#ag-input'); if(inp) inp.addEventListener('keydown',e=>{ if(e.key==='Enter') agentChat(); });
   },
-  'ag-send': ()=>agentChat(AGENT_REPLIES[Math.floor(Math.random()*AGENT_REPLIES.length)]),
+  'ag-send': ()=>agentChat(),
   'new-appt': ()=>{
     openModal('<div class="m-head"><h3>Novo agendamento</h3><div class="grow"></div><button class="icon-btn" data-action="close-modal"><span data-ic="x" data-size="14"></span></button></div>'+
     '<div class="m-body"><div class="f-row"><div class="field"><span class="f-label">Cliente</span><select class="f-select">'+state.contacts.map(c=>'<option>'+c.name+'</option>').join('')+'</select></div><div class="field"><span class="f-label">Serviço</span><select class="f-select">'+state.services.map(s=>'<option>'+s.name+'</option>').join('')+'</select></div></div>'+
