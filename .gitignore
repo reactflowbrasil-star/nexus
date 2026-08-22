@@ -9,3 +9,8 @@ node_modules/
 dist/
 .env
 .env.local
+
+# artefatos locais
+api/__pycache__/
+.claude/
+isolate/
