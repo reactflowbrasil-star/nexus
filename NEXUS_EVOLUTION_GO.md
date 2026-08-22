@@ -3,12 +3,12 @@
 O Nexus incorpora o `evolution-go-custom` como backend oficial de WhatsApp em:
 
 ```text
-backend/evolution-go-custom
+backend/evolution-go-custom-content
 ```
 
 ## Inicialização
 
-1. Entre em `backend/evolution-go-custom`.
+1. Entre em `backend/evolution-go-custom-content`.
 2. Copie `.env.example` para `.env`.
 3. Defina uma `GLOBAL_API_KEY` forte e exclusiva.
 4. Suba o ambiente com o compose de `deploy/docker-compose.yml`.
