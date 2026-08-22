@@ -1,0 +1,15 @@
+.env
+deploy/.env
+*.log
+logs/*
+build/
+*.prof
+coverage.*
+.air.toml
+.idea/
+.vscode/
+.DS_Store
+
+# Compiled binaries
+evolution-go
+server
