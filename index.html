@@ -728,6 +728,9 @@ async function evolutionRequest(path, options={}){
 try{ state.integration.n8n.log = JSON.parse(localStorage.getItem('nexus.n8n.log')||'[]'); }catch(e){}
 
 /* ================= N8N (automação via webhooks) ================= */
+/* ---- estado persistente das integrações (switches) ---- */
+const INT_MAP = (()=>{ try{ return JSON.parse(localStorage.getItem('nexus.integrations')||'{}'); }catch(e){ return {}; } })();
+
 async function n8nEmit(event, data){
   const cfg = state.integration.n8n;
   if(!cfg.enabled || !cfg.webhookUrl) return;
@@ -1084,7 +1087,7 @@ Views.dashboard = function(){
         </div>
       </div>
       <div class="card-b" style="padding:14px 18px 10px">
-        ${svgChart(a.leads30, 700, 190, '#6D5DF6')}
+        <div id="dash-chart">${svgChart(a.leads30, 700, 190, '#6D5DF6')}</div>
         <div class="between mt8">
           <span class="chart-tip">1 ago</span><span class="chart-tip">5 ago</span><span class="chart-tip">10 ago</span><span class="chart-tip">15 ago</span><span class="chart-tip">20 ago</span><span class="chart-tip">Hoje</span>
         </div>
@@ -1406,7 +1409,12 @@ function persistState(){
       appointments: state.appointments,
       services: state.services || [],
       campaigns: state.campaigns,
-      events: state.events.slice(0,40)
+      events: state.events.slice(0,40),
+      forms: state.forms || [],
+      landings: state.landings || [],
+      customSegments: state.customSegments || [],
+      adminTenants: (state.admin && state.admin.tenants) ? state.admin.tenants : [],
+      formSubmissions: state.formSubmissions || []
     }));
   }catch(e){ /* quota */ }
 }
@@ -1425,6 +1433,11 @@ function loadPersisted(){
     if(d.services && d.services.length) state.services = d.services;
     if(d.campaigns) state.campaigns = d.campaigns;
     if(d.events) state.events = d.events;
+    if(d.forms && d.forms.length) state.forms = d.forms;
+    if(d.landings && d.landings.length) state.landings = d.landings;
+    if(d.customSegments) state.customSegments = d.customSegments;
+    if(d.adminTenants && d.adminTenants.length) window._savedTenants = d.adminTenants;
+    if(d.formSubmissions) state.formSubmissions = d.formSubmissions;
     return true;
   }catch(e){ return false; }
 }
@@ -1477,7 +1490,16 @@ function go(view){
 }
 function afterRender(v){
   if(v==='dashboard'){
-    document.querySelectorAll('.tabs .tab').forEach((t,i)=>{ t.onclick=()=>{ document.querySelectorAll('.tabs .tab').forEach(x=>x.classList.remove('active')); t.classList.add('active'); toast('Período alterado para '+(['Hoje','7 dias','30 dias'][i])+' (demo)','info'); }; });
+    document.querySelectorAll('.tabs .tab').forEach((t,i)=>{
+      t.onclick=()=>{
+        document.querySelectorAll('.tabs .tab').forEach(x=>x.classList.remove('active')); t.classList.add('active');
+        const days=[1,7,30][i];
+        const arr=state.analytics.leads30.slice(-days);
+        const wrap=document.getElementById('dash-chart');
+        if(wrap) wrap.innerHTML=svgChart(arr.length?arr:[0], 700, 190, '#6D5DF6');
+        toast(days+' dia'+(days>1?'s':'')+' · '+arr.reduce((x,y)=>x+y,0)+' leads no período','info');
+      };
+    });
   }
   if(v==='contatos'){
     const s = $('#ct-search'); if(s) s.oninput = ()=>{ contactFilter.q=s.value; Views.contatos(); render(); };
@@ -1784,7 +1806,7 @@ Views.campanhas = function(){
     </div>
   </div>
   <div class="grid g4 mb16">
-    <div class="kpi"><div class="kpi-top"><span class="kpi-icon" style="background:#E7F6EC;color:#15803D"><span data-ic="send" data-size="15"></span></span><div class="kpi-label">Enviadas (30d)</div></div><div class="kpi-value">18.446</div></div>
+    <div class="kpi"><div class="kpi-top"><span class="kpi-icon" style="background:#E7F6EC;color:#15803D"><span data-ic="send" data-size="15"></span></span><div class="kpi-label">Enviadas (total)</div></div><div class="kpi-value">${state.campaigns.reduce((a,c)=>a+(c.sent||0),0).toLocaleString('pt-BR')}</div></div>
     <div class="kpi"><div class="kpi-top"><span class="kpi-icon" style="background:#E8EFFE;color:#1D4ED8"><span data-ic="checkc" data-size="15"></span></span><div class="kpi-label">Taxa de entrega</div></div><div class="kpi-value">97,2%</div></div>
     <div class="kpi"><div class="kpi-top"><span class="kpi-icon" style="background:#E7E5FE;color:#6D28D9"><span data-ic="message" data-size="15"></span></span><div class="kpi-label">Taxa de resposta</div></div><div class="kpi-value">12,4%</div></div>
     <div class="kpi"><div class="kpi-top"><span class="kpi-icon" style="background:#FEF3E2;color:#B45309"><span data-ic="alert" data-size="15"></span></span><div class="kpi-label">Opt-outs (30d)</div></div><div class="kpi-value">0,4%</div></div>
@@ -1808,7 +1830,7 @@ Views.campanhas = function(){
               '<td class="muted small">'+c.sched+'</td>'+
               '<td><div class="flex" style="gap:5px">'+
                 (c.status==='ativa'?'<button class="icon-btn" data-action="camp-toggle" data-id="'+c.id+'"><span data-ic="pause" data-size="13"></span></button>':'<button class="icon-btn" data-action="camp-toggle" data-id="'+c.id+'"><span data-ic="play" data-size="13"></span></button>')+
-                '<button class="icon-btn" data-action="camp-run" data-id="'+c.id+'"><span data-ic="refresh" data-size="13"></span></button>'+
+                (c.running?'<button class="icon-btn" data-action="camp-stop" data-id="'+c.id+'" title="Parar disparo"><span data-ic="pause" data-size="13" style="color:var(--red)"></span></button>':'<button class="icon-btn" data-action="camp-run" data-id="'+c.id+'" title="Disparar via WhatsApp"><span data-ic="refresh" data-size="13"></span></button>')+
                 '<button class="icon-btn" data-action="camp-del" data-id="'+c.id+'"><span data-ic="trash" data-size="13" style="color:var(--red)"></span></button>'+
               '</div></td></tr>';
           }).join('')}
@@ -1820,37 +1842,26 @@ Views.campanhas = function(){
 
 /* ---------- FORMS ---------- */
 Views.forms = function(){
-  const forms = [
-    {id:'f1', name:'Formulário de contato', subs:1284, conv:'9,2%', status:'ativo', fields:['Nome','E-mail','Telefone','Mensagem']},
-    {id:'f2', name:'Formulário de orçamento', subs:862, conv:'14,8%', status:'ativo', fields:['Nome','Empresa','Nº usuários','Mensagem']},
-    {id:'f3', name:'Form Meta Lead', subs:3210, conv:'6,1%', status:'ativo', fields:['Nome','Telefone','Cidade']},
-    {id:'f4', name:'Quiz diagnóstico', subs:214, conv:'31,4%', status:'rascunho', fields:['Passo 1–5']}
-  ];
+  const forms = state.forms;
+  const active = forms.find(f=>f.id===state.activeForm) || forms[0];
   return `
   <div class="page-head">
-    <div><div class="ph-title">Forms</div><div class="ph-sub">Cada submissão vira contato no CRM e pode disparar um workflow</div></div>
+    <div><div class="ph-title">Forms</div><div class="ph-sub">Cada submissão vira contato no CRM e dispara automações</div></div>
     <div class="ph-actions"><button class="btn btn-primary btn-sm" data-action="new-form"><span data-ic="plus" data-size="13" style="color:#fff"></span>Novo formulário</button></div>
   </div>
   <div class="grid g-1-2">
     <div class="card">
-      <div class="card-h"><h3>Formulários</h3></div>
+      <div class="card-h"><h3>Formulários</h3><span class="badge b-violet">${forms.reduce((a,f)=>a+(f.subs||0),0).toLocaleString('pt-BR')} submissões</span></div>
       <div class="card-b" style="padding:6px 10px">
-        ${forms.map(f=>'<div class="seg-row" style="padding:11px 8px;cursor:pointer" data-action="edit-form" data-id="'+f.id+'"><span class="av av-32" style="background:#6D5DF6;border-radius:9px">'+icon('form',14,'#fff')+'</span><div class="grow"><div class="bold" style="font-size:12.5px">'+f.name+'</div><div class="tiny muted">'+f.subs.toLocaleString('pt-BR')+' submissões · conv. '+f.conv+'</div></div><span class="badge '+(f.status==='ativo'?'b-green':'b-amber')+'">'+(f.status==='ativo'?'Ativo':'Rascunho')+'</span></div>').join('')}
+        ${forms.map(f=>'<div class="seg-row" style="padding:11px 8px;cursor:pointer'+(active&&f.id===active.id?';background:var(--accent-soft)':'')+'" data-action="open-form" data-id="'+f.id+'"><span class="av av-32" style="background:#6D5DF6;border-radius:9px">'+icon('form',14,'#fff')+'</span><div class="grow"><div class="bold" style="font-size:12.5px">'+esc(f.name)+'</div><div class="tiny muted">'+(f.subs||0).toLocaleString('pt-BR')+' submissões · '+f.fields.length+' campos</div></div><span class="badge '+(f.status==='ativo'?'b-green':'b-amber')+'">'+(f.status==='ativo'?'Ativo':'Rascunho')+'</span></div>').join('')}
       </div>
     </div>
     <div class="card">
-      <div class="card-h"><h3>Construtor — Formulário de orçamento</h3><div class="grow"></div><button class="btn btn-soft btn-sm" data-action="preview-form"><span data-ic="eye" data-size="12"></span>Pré-visualizar</button></div>
+      <div class="card-h"><h3>Construtor${active?' — '+esc(active.name):''}</h3><div class="grow"></div><button class="btn btn-soft btn-sm" data-action="preview-form" data-id="${active?id:''}"><span data-ic="eye" data-size="12"></span>Pré-visualizar</button></div>
       <div class="card-b">
-        <div class="grid g2">
-          ${['Nome','Empresa','Nº de usuários','E-mail','Telefone','Mensagem'].map((f,i)=>'<div class="field"><span class="f-label">'+f+'</span><input class="f-input" placeholder="'+f+'" '+(i===5?'style="grid-column:1/-1"':'')+'></div>').join('')}
-        </div>
-        <div class="flex mt16"><input class="f-input grow" placeholder="Link de redirecionamento pós-submissão (opcional)"><button class="btn btn-primary btn-sm" data-action="save-form"><span data-ic="check" data-size="12" style="color:#fff"></span>Salvar</button></div>
-        <div class="card mt16" style="background:#F4F2FF;border-color:#E4DFFF">
-          <div class="card-b flex" style="gap:10px;padding:12px">
-            <span style="color:#6D28D9">'+icon('zap',17)+'</span>
-            <div class="small muted" style="line-height:1.5">Fluxo automático: <b style="color:var(--text)">Form enviado → contato criado → workflow "Meta Ads → SDR IA" → WhatsApp em segundos → pipeline</b></div>
-          </div>
-        </div>
+        <div class="field mb12"><span class="f-label">Nome do formulário</span><input class="f-input" id="fb-name" value="${active?esc(active.name):''}"></div>
+        <div class="field"><span class="f-label">Campos (um por linha)</span><textarea class="f-textarea" id="fb-fields">${active?esc(active.fields.join('\n')):''}</textarea><div class="f-hint mt8">Cada submissão cria/atualiza um contato no CRM e dispara <b>form.submitted</b> no n8n.</div></div>
+        <div class="flex mt16"><input class="f-input grow" id="fb-redirect" placeholder="Link de redirecionamento pós-submissão (opcional)" value="${active?esc(active.redirect||''):''}"><button class="btn btn-primary btn-sm" data-action="save-form" data-id="${active?id:''}"><span data-ic="check" data-size="12" style="color:#fff"></span>Salvar</button></div>
       </div>
     </div>
   </div>`;
@@ -1858,18 +1869,13 @@ Views.forms = function(){
 
 /* ---------- LANDING PAGES ---------- */
 Views.landings = function(){
-  const pages = [
-    {name:'Nexus — Página principal', url:'nexus.app/sua-agencia', visits:8421, conv:'8,4%', status:'publicada', grad:'linear-gradient(135deg,#6D5DF6,#8B5CF6)'},
-    {name:'Oferta Black Novembro', url:'nexus.app/black-novembro', visits:3120, conv:'12,1%', status:'publicada', grad:'linear-gradient(135deg,#EA580C,#F59E0B)'},
-    {name:'Landing Consultoria', url:'nexus.app/consultoria', visits:0, conv:'—', status:'rascunho', grad:'linear-gradient(135deg,#0891B2,#06B6D4)'}
-  ];
   return `
   <div class="page-head">
-    <div><div class="ph-title">Landing Pages</div><div class="ph-sub">Páginas com formulário embutido → lead no CRM → workflow → WhatsApp</div></div>
+    <div><div class="ph-title">Landing Pages</div><div class="ph-sub">Páginas com formulário embutido → lead no CRM → automação n8n → WhatsApp</div></div>
     <div class="ph-actions"><button class="btn btn-primary btn-sm" data-action="new-landing"><span data-ic="plus" data-size="13" style="color:#fff"></span>Nova página</button></div>
   </div>
   <div class="grid g3">
-    ${pages.map(p=>'<div class="card"><div class="card-b" style="padding:14px"><div style="height:120px;border-radius:10px;background:'+p.grad+';display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:13px;opacity:.9">'+p.name+'</div><div class="between mt12"><div class="bold" style="font-size:13px">'+p.name+'</div><span class="badge '+(p.status==='publicada'?'b-green':'b-amber')+'">'+(p.status==='publicada'?'Publicada':'Rascunho')+'</span></div><div class="small muted mt8" style="word-break:break-all">'+icon('link',11)+' '+p.url+'</div><div class="between mt12"><span class="small muted">'+p.visits.toLocaleString('pt-BR')+' visitas</span><span class="small muted">conv. <b style="color:var(--accent-dark)">'+p.conv+'</b></span></div><div class="flex mt12" style="gap:6px"><button class="btn btn-ghost btn-sm grow" data-action="edit-landing"><span data-ic="edit" data-size="11"></span>Editar</button><button class="btn btn-soft btn-sm grow" data-action="fake-landing"><span data-ic="eye" data-size="11"></span>Ver página</button></div></div></div>').join('')}
+    ${state.landings.map(p=>'<div class="card"><div class="card-b" style="padding:14px"><div style="height:120px;border-radius:10px;background:'+p.grad+';display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:13px;opacity:.9;text-align:center;padding:0 10px">'+esc(p.name)+'</div><div class="between mt12"><div class="bold" style="font-size:13px">'+esc(p.name)+'</div><span class="badge '+(p.status==='publicada'?'b-green':'b-amber')+'">'+(p.status==='publicada'?'Publicada':'Rascunho')+'</span></div><div class="small muted mt8" style="word-break:break-all">'+icon('link',11)+' '+esc(p.url)+'</div><div class="between mt12"><span class="small muted">'+(p.visits||0).toLocaleString('pt-BR')+' visitas</span><span class="small muted">conv. <b style="color:var(--accent-dark)">'+(p.conv||'—')+'</b></span></div><div class="flex mt12" style="gap:6px"><button class="btn btn-ghost btn-sm grow" data-action="edit-landing" data-id="'+p.id+'"><span data-ic="edit" data-size="11"></span>Editar</button><button class="btn btn-soft btn-sm grow" data-action="preview-landing" data-id="'+p.id+'"><span data-ic="eye" data-size="11"></span>Ver página</button></div></div></div>').join('')}
   </div>`;
 };
 
@@ -1962,7 +1968,7 @@ Views.integracoes = function(){
     <div class="ph-actions"><button class="btn btn-ghost btn-sm"><span data-ic="webhook" data-size="13"></span>Webhooks</button></div>
   </div>
   <div class="grid g4">
-    ${ints.map(i=>{const isEvo=i.n==='Evolution GO';const evoC=state.integration.evolution.connected;return '<div class="card int-card" '+(isEvo?'data-action="configure-int" style="cursor:pointer"':'')+'><div class="between"><span class="int-logo" style="background:'+i.bg+'">'+(i.n==='Meta Ads'?'f':i.n==='WhatsApp Cloud API'?'WA':isEvo?'EVO':i.n==='Google Agenda'?'G':i.n==='Instagram'?'IG':i.n==='Facebook Messenger'?'f':i.n==='Zapier'?'Z':'{ }')+'</span><label class="switch"><input type="checkbox" '+(i.on?'checked':'')+' data-action="int-toggle"><span class="sl"></span></label></div><div><div class="int-name">'+i.n+'</div><div class="int-desc">'+i.d+'</div></div><span class="badge '+(isEvo?(evoC?'b-green':'b-amber'):(i.on?'b-green':'b-gray'))+'">'+(isEvo?(evoC?'Conectado':'Clique para conectar'):(i.on?'Conectado':i.s))+'</span>'+(isEvo?'<div class="flex mt8" style="gap:6px;justify-content:flex-end;width:100%">'+(evoC?'<button class="btn btn-danger btn-sm" data-action="wa-disconnect" data-instance="'+esc(state.integration.evolution.instance)+'"><span data-ic="power" data-size="11"></span>Desconectar</button>':'<button class="btn btn-primary btn-sm" data-action="wa-qr-connect" data-instance="'+esc(state.integration.evolution.instance)+'"><span data-ic="phone" data-size="11" style="color:#fff"></span>Conectar WhatsApp</button>')+'<button class="btn btn-ghost btn-sm" data-action="configure-int"><span data-ic="settings" data-size="11"></span>Config</button></div>':'')+'</div>';}).join('')}
+    ${ints.map(i=>{const isEvo=i.n==='Evolution GO';const evoC=state.integration.evolution.connected;const on=(INT_MAP[i.n]!==undefined?INT_MAP[i.n]:i.on);return '<div class="card int-card" data-int="'+esc(i.n)+'" '+(isEvo?'data-action="configure-int" style="cursor:pointer"':'')+'>'+'<div class="between"><span class="int-logo" style="background:'+i.bg+'">'+(i.n==='Meta Ads'?'f':i.n==='WhatsApp Cloud API'?'WA':isEvo?'EVO':i.n==='Google Agenda'?'G':i.n==='Instagram'?'IG':i.n==='Facebook Messenger'?'f':i.n==='Zapier'?'Z':'{ }')+'</span><label class="switch"><input type="checkbox" '+(on?'checked':'')+' data-action="int-toggle"><span class="sl"></span></label></div><div><div class="int-name">'+i.n+'</div><div class="int-desc">'+i.d+'</div></div><span class="badge '+(isEvo?(evoC?'b-green':'b-amber'):(i.on?'b-green':'b-gray'))+'">'+(isEvo?(evoC?'Conectado':'Clique para conectar'):(on?'Conectado':'Desconectado'))+'</span>'+(isEvo?'<div class="flex mt8" style="gap:6px;justify-content:flex-end;width:100%">'+(evoC?'<button class="btn btn-danger btn-sm" data-action="wa-disconnect" data-instance="'+esc(state.integration.evolution.instance)+'"><span data-ic="power" data-size="11"></span>Desconectar</button>':'<button class="btn btn-primary btn-sm" data-action="wa-qr-connect" data-instance="'+esc(state.integration.evolution.instance)+'"><span data-ic="phone" data-size="11" style="color:#fff"></span>Conectar WhatsApp</button>')+'<button class="btn btn-ghost btn-sm" data-action="configure-int"><span data-ic="settings" data-size="11"></span>Config</button></div>':'')+'</div>';}).join('')}
   </div>
   ${integracoesN8nCard()}
 `;
@@ -1990,7 +1996,7 @@ Views.admin = function(){
     <div class="card">
       <div class="card-h"><h3>Workers (BullMQ)</h3></div>
       <div class="card-b" style="padding:6px 14px">
-        ${ad.workers.map(w=>'<div class="health-row"><span class="pulse '+w.status+'"></span><div class="grow bold" style="font-size:12.5px">'+w.name+'</div><span class="tiny muted">'+w.q+'</span><button class="btn btn-ghost btn-sm ml" data-action="fake-wa" style="margin-left:8px"><span data-ic="refresh" data-size="11"></span></button></div>').join('')}
+        ${ad.workers.map(w=>'<div class="health-row"><span class="pulse '+w.status+'"></span><div class="grow bold" style="font-size:12.5px">'+w.name+'</div><span class="tiny muted">'+w.q+'</span><button class="btn btn-ghost btn-sm ml" data-action="refresh-admin" style="margin-left:8px" title="Atualizar status"><span data-ic="refresh" data-size="11"></span></button></div>').join('')}
       </div>
     </div>
   </div>
@@ -2009,25 +2015,46 @@ Views.admin = function(){
 };
 
 /* ---------- SEGMENTOS / EMPRESAS ---------- */
+function segMatch(c, field, op, val){
+  if(field==='origin') return (c.origin||'').toLowerCase() === val.toLowerCase();
+  if(field==='stage')  return c.stage === val;
+  if(field==='tag')    return (c.tags||[]).some(t=>t.toLowerCase()===val.toLowerCase());
+  if(field==='score'){ const v=parseFloat(val)||0; return op==='<=' ? c.score<=v : c.score>=v; }
+  if(field==='last'){  const v=parseFloat(val)||0; return op==='<' ? c.last<v : c.last>v; }
+  if(field==='channel') return c.channel === val;
+  return false;
+}
 Views.segmentos = function(){
-  const segs = [
-    {n:'Novos leads', d:'origem = Meta Ads · tag contém "Lead"', c:842},
-    {n:'Orçamentos abertos', d:'etapa = Proposta · vencimento ≥ hoje', c:12},
-    {n:'Inativos 60+ dias', d:'última atividade > 60 dias', c:2104},
-    {n:'Clientes ativos', d:'etapa = Venda · receita > R$ 1.000', c:86},
-    {n:'Alto lead score', d:'score ≥ 80 · sem oportunidade', c:314}
+  const cnt = fn => state.contacts.filter(fn).length;
+  const base = [
+    {n:'Novos leads', d:'origem = Meta Ads · tag = Lead', c:cnt(c=>c.origin==='Meta Ads'&&(c.tags||[]).includes('Lead'))},
+    {n:'Orçamentos abertos', d:'etapa = Proposta', c:cnt(c=>c.stage==='proposta')},
+    {n:'Inativos 60+ dias', d:'última atividade > 60 min', c:cnt(c=>c.last>60)},
+    {n:'Clientes ativos', d:'etapa = Venda', c:cnt(c=>c.stage==='venda')},
+    {n:'Alto lead score', d:'score ≥ 80', c:cnt(c=>c.score>=80)}
   ];
+  const custom = (state.customSegments||[]).map(s=>({...s, c:state.contacts.filter(c=>segMatch(c,s.field,s.op,s.value)).length}));
+  const row = (s, del) => '<div class="seg-row"><span class="av av-32" style="background:#6D5DF6;border-radius:9px">'+icon('filter',13,'#fff')+'</span><div class="grow"><div class="bold" style="font-size:12.8px">'+esc(s.n)+'</div><div class="tiny muted">'+esc(s.d)+'</div></div><span class="badge b-violet">'+s.c.toLocaleString('pt-BR')+'</span>'+(del?'<button class="icon-btn" data-action="del-segment" data-id="'+s.id+'"><span data-ic="trash" data-size="13" style="color:var(--red)"></span></button>':'<button class="icon-btn"><span data-ic="more" data-size="14"></span></button>')+'</div>';
   return `
   <div class="page-head">
-    <div><div class="ph-title">Segmentos</div><div class="ph-sub">Listas dinâmicas usadas em campanhas e workflows</div></div>
+    <div><div class="ph-title">Segmentos</div><div class="ph-sub">Listas dinâmicas calculadas em tempo real sobre seus contatos</div></div>
     <div class="ph-actions"><button class="btn btn-primary btn-sm" data-action="new-segment"><span data-ic="plus" data-size="13" style="color:#fff"></span>Novo segmento</button></div>
   </div>
-  <div class="card">
+  <div class="card mb16">
+    <div class="card-h"><h3>Segmentos padrão</h3><div class="grow"></div><span class="tiny muted">${state.contacts.length} contatos na base</span></div>
     <div class="card-b" style="padding:8px 12px">
-      ${segs.map(s=>'<div class="seg-row"><span class="av av-32" style="background:#6D5DF6;border-radius:9px">'+icon('filter',13,'#fff')+'</span><div class="grow"><div class="bold" style="font-size:12.8px">'+s.n+'</div><div class="tiny muted">'+s.d+'</div></div><span class="badge b-violet">'+s.c.toLocaleString('pt-BR')+'</span><button class="icon-btn"><span data-ic="more" data-size="14"></span></button></div>').join('')}
+      ${base.map(s=>row(s,false)).join('')}
+    </div>
+  </div>
+  ${custom.length ? '<div class="card"><div class="card-h"><h3>Meus segmentos</h3></div><div class="card-b" style="padding:8px 12px">'+custom.map(s=>row(s,true)).join('')+'</div></div>' : ''}
+  <div class="card mt16" style="background:#F4F2FF;border-color:#E4DFFF">
+    <div class="card-b flex" style="gap:10px;padding:12px">
+      <span style="color:#6D28D9">${icon('zap',17)}</span>
+      <div class="small muted" style="line-height:1.5">Use segmentos em campanhas: o disparo real via WhatsApp filtra automaticamente contatos com número válido.</div>
     </div>
   </div>`;
 };
+
 Views.empresas = function(){
   const map = {};
   state.contacts.forEach(c=>{ if(!map[c.company]) map[c.company]={name:c.company, contacts:[], values:[], stages:[], owner:c.owner}; map[c.company].contacts.push(c); map[c.company].values.push(c.value||0); map[c.company].stages.push(c.stage); });
@@ -2053,6 +2080,17 @@ Views.empresas = function(){
     </div>
   </div>`;
 };
+
+function landingModal(id){
+  const p=id?state.landings.find(x=>x.id===id):null;
+  openModal('<div class="m-head"><h3>'+(p?'Editar página':'Nova landing page')+'</h3><div class="grow"></div><button class="icon-btn" data-action="close-modal"><span data-ic="x" data-size="14"></span></button></div>'+
+  '<div class="m-body">'+
+  '<div class="field"><span class="f-label">Nome</span><input class="f-input" id="ld-name" value="'+(p?esc(p.name):'')+'"></div>'+
+  '<div class="field mt12"><span class="f-label">URL</span><input class="f-input" id="ld-url" value="'+(p?esc(p.url):'nexus.app/')+'"></div>'+
+  '<div class="f-row mt12"><div class="field"><span class="f-label">Status</span><select class="f-select" id="ld-status"><option value="publicada"'+(p&&p.status==='publicada'?' selected':'')+'>Publicada</option><option value="rascunho"'+(p&&p.status==='rascunho'?' selected':'')+'>Rascunho</option></select></div>'+
+  '<div class="field"><span class="f-label">Cor do herói</span><select class="f-select" id="ld-grad"><option value="linear-gradient(135deg,#6D5DF6,#8B5CF6)"'+(p&&p.grad.indexOf('#6D5DF6')>-1?' selected':'')+'>Roxo Nexus</option><option value="linear-gradient(135deg,#EA580C,#F59E0B)"'+(p&&p.grad.indexOf('#EA580C')>-1?' selected':'')+'>Laranja</option><option value="linear-gradient(135deg,#0891B2,#06B6D4)">Ciano</option></select></div></div>'+
+  '</div><div class="m-foot"><button class="btn btn-ghost btn-sm" data-action="close-modal">Cancelar</button><button class="btn btn-primary btn-sm" data-action="save-landing" data-id="'+(p?p.id:'')+'">Salvar</button></div>');
+}
 
 /* ================= INTERACTIONS ================= */
 function recomputeSums(){ state.pipeline.stages.forEach(s=>s.sum=s.items.reduce((a,b)=>a+b.value,0)); }
@@ -2308,18 +2346,145 @@ const ACTIONS = {
     }
     toast('Ação simulada: mensagem de WhatsApp enviada (demo)','success');
   },
-  'fake-mail': ()=>toast('Ação simulada: e-mail enviado (demo)','success'),
-  'fake-opp': ()=>toast('Nova oportunidade criada (demo)','success'),
-  'fake-landing': ()=>toast('Abrindo preview da página (demo)','info'),
-  'edit-landing': ()=>toast('Editor de landing pages (demo) — em breve','info'),
-  'preview-form': ()=>toast('Pré-visualização do formulário (demo)','info'),
-  'save-form': ()=>toast('Formulário salvo! Submissões continuam entrando no CRM.','success'),
-  'edit-form': ()=>toast('Editor de formulário aberto (demo)','info'),
-  'new-form': ()=>toast('Novo formulário (demo) — selecione campos no construtor','info'),
-  'new-landing': ()=>toast('Nova landing page (demo) — template em branco criado','info'),
-  'new-segment': ()=>toast('Novo segmento (demo) — defina condições de filtro','info'),
-  'new-tenant': ()=>toast('Nova empresa (demo) — provisioning multi-tenant simulado','info'),
-  'int-toggle': el=>{ const on = el.checked; toast((on?'Conectado':'Desconectado')+' (simulação de integração)','info'); },
+  'fake-mail': ()=>{
+    const nameEl = document.querySelector('#drawer-root .dp-head .bold') || document.querySelector('#modal-root .m-body .bold');
+    const name = nameEl ? nameEl.textContent.trim() : '';
+    const c = state.contacts.find(x=>x.name===name);
+    if(c && c.email && c.email.includes('@')){
+      window.location.href = 'mailto:'+c.email+'?subject='+encodeURIComponent('Contato — Nexus CRM')+'&body='+encodeURIComponent('Olá '+c.name.split(' ')[0]+',\n\n');
+      toast('Abrindo seu cliente de e-mail para '+c.email,'info');
+      n8nEmit('email.compose_opened',{to:c.email});
+    } else toast('Contato sem e-mail válido cadastrado.','warn');
+  },
+  'fake-opp': ()=>{
+    const nameEl = document.querySelector('#drawer-root .dp-head .bold');
+    const cname = nameEl ? nameEl.textContent.trim() : '';
+    ACTIONS['new-opp']();
+    const sel = document.querySelector('#modal-root select');
+    if(sel && cname){ [...sel.options].forEach(o=>{ if(o.textContent===cname) sel.value=o.value; }); }
+  },
+  /* ---- FORMS (real) ---- */
+  'open-form': el=>{ state.activeForm=el.dataset.id; render(); },
+  'new-form': ()=>{
+    const f={id:'f'+Date.now(), name:'Novo formulário', subs:0, conv:'—', status:'rascunho', redirect:'', fields:['Nome','Telefone']};
+    state.forms.unshift(f); state.activeForm=f.id;
+    toast('Formulário criado — defina os campos e salve.','success'); render();
+  },
+  'save-form': el=>{
+    const f=state.forms.find(x=>x.id===el.dataset.id)||state.forms[0];
+    if(!f) return;
+    f.name=$('#fb-name')?.value.trim()||f.name;
+    f.fields=($('#fb-fields')?.value||'').split('\n').map(s=>s.trim()).filter(Boolean);
+    f.redirect=$('#fb-redirect')?.value.trim()||'';
+    persistState();
+    toast('Formulário "'+f.name+'" salvo com '+f.fields.length+' campos.','success');
+    pushEvent('form','Formulário atualizado: '+f.name);
+    render();
+  },
+  'preview-form': el=>{
+    const f=state.forms.find(x=>x.id===el.dataset.id)||state.forms[0];
+    if(!f) return;
+    openModal('<div class="m-head"><h3>'+esc(f.name)+' — prévia</h3><div class="grow"></div><button class="icon-btn" data-action="close-modal"><span data-ic="x" data-size="14"></span></button></div>'+
+    '<div class="m-body">'+f.fields.map(fd=>'<div class="field mb12"><span class="f-label">'+esc(fd)+'</span><input class="f-input fp-field" data-label="'+esc(fd)+'" placeholder="'+esc(fd)+'"></div>').join('')+
+    '<div class="small muted mt8">Ao enviar, o lead entra no CRM e dispara <b>form.submitted</b> no n8n.</div></div>'+
+    '<div class="m-foot"><button class="btn btn-ghost btn-sm" data-action="close-modal">Fechar</button><button class="btn btn-primary btn-sm" data-action="submit-form-preview" data-id="'+f.id+'">Enviar como lead</button></div>');
+  },
+  'submit-form-preview': el=>{
+    const f=state.forms.find(x=>x.id===el.dataset.id); if(!f) return;
+    const values={};
+    [...document.querySelectorAll('#modal-root .fp-field')].forEach(i=>{ if(i.value.trim()) values[i.dataset.label]=i.value.trim(); });
+    f.subs=(f.subs||0)+1;
+    const nome=values['Nome']||values['nome']||'Lead do formulário';
+    state.contacts.unshift({id:Date.now(), name:nome, company:values['Empresa']||'—', phone:values['Telefone']||values['WhatsApp']||'—', email:values['E-mail']||values['email']||'—', channel:'webchat', origin:'Form: '+f.name, tags:['Lead'], score:55, stage:'novo', value:0, owner:'—', last:0, lastLabel:'Submissão de formulário',
+      timeline:tl(['form','Formulário "'+f.name+'" preenchido','agora'])});
+    state.formSubmissions=state.formSubmissions||[];
+    state.formSubmissions.unshift({form:f.name, values, time:nowTime()});
+    closeModal();
+    n8nEmit('form.submitted',{form:f.name, values});
+    toast('<code>form.submitted</code><br>Lead "'+nome+'" entrou no CRM via '+f.name,'event');
+    pushEvent('form','Lead via formulário: '+nome);
+    render();
+  },
+  /* ---- LANDINGS (real) ---- */
+  'new-landing': ()=>landingModal(null),
+  'edit-landing': el=>landingModal(el.dataset.id),
+  'save-landing': el=>{
+    const name=$('#ld-name').value.trim();
+    const url=$('#ld-url').value.trim()||'nexus.app/pagina';
+    if(!name){ toast('Dê um nome à página.','warn'); return; }
+    const grad=$('#ld-grad').value, status=$('#ld-status').value;
+    let p=el.dataset.id?state.landings.find(x=>x.id===el.dataset.id):null;
+    if(p){ Object.assign(p,{name,url,grad,status}); }
+    else { p={id:'l'+Date.now(),name,url,grad,status,visits:0,conv:'—'}; state.landings.unshift(p); }
+    persistState(); closeModal();
+    toast('Landing "'+name+'" salva ('+status+').','success'); render();
+  },
+  'preview-landing': el=>{
+    const p=state.landings.find(x=>x.id===el.dataset.id); if(!p) return;
+    p.visits=(p.visits||0)+1; persistState();
+    openModal('<div style="height:150px;border-radius:16px 16px 0 0;background:'+p.grad+';display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:18px;text-align:center;padding:0 24px">'+esc(p.name)+'</div>'+
+    '<div class="m-body" style="text-align:center"><div class="tiny muted mb12">'+icon('link',11)+' '+esc(p.url)+' · visita registrada</div>'+
+    '<button class="btn btn-primary btn-sm" data-action="landing-cta" data-id="'+p.id+'">Quero saber mais</button>'+
+    '<div class="tiny muted mt12">A conversão gera um lead real no CRM e dispara <b>landing.lead</b> no n8n.</div></div>'+
+    '<div class="m-foot"><button class="btn btn-ghost btn-sm grow" data-action="close-modal">Fechar</button></div>');
+  },
+  'landing-cta': el=>{
+    const p=state.landings.find(x=>x.id===el.dataset.id); if(!p) return;
+    const nome='Lead — '+p.name;
+    state.contacts.unshift({id:Date.now(), name:nome, company:'—', phone:'—', email:'—', channel:'webchat', origin:'Landing: '+p.url, tags:['Lead'], score:50, stage:'novo', value:0, owner:'—', last:0, lastLabel:'Lead da landing',
+      timeline:tl(['link','Conversão na landing "'+p.name+'"','agora'])});
+    closeModal();
+    n8nEmit('landing.lead',{landing:p.name, url:p.url});
+    toast('<code>landing.lead</code><br>Lead de "'+p.name+'" capturado — veja em Contatos','event');
+    render();
+  },
+  /* ---- SEGMENTOS (real) ---- */
+  'new-segment': ()=>{
+    openModal('<div class="m-head"><h3>Novo segmento dinâmico</h3><div class="grow"></div><button class="icon-btn" data-action="close-modal"><span data-ic="x" data-size="14"></span></button></div>'+
+    '<div class="m-body"><div class="field"><span class="f-label">Nome</span><input class="f-input" id="sg-name" placeholder="Ex.: Leads quentes SP"></div>'+
+    '<div class="f-row mt12"><div class="field"><span class="f-label">Campo</span><select class="f-select" id="sg-field"><option value="origin">Origem</option><option value="stage">Etapa</option><option value="tag">Tag</option><option value="score">Score</option><option value="last">Inatividade (min)</option><option value="channel">Canal</option></select></div><div class="field"><span class="f-label">Operador</span><select class="f-select" id="sg-op"><option value="==">igual a</option><option value=">=">maior ou igual</option><option value="<=">menor ou igual</option><option value=">">maior que</option><option value="<">menor que</option></select></div></div>'+
+    '<div class="field mt12"><span class="f-label">Valor</span><input class="f-input" id="sg-value" placeholder="Ex.: Meta Ads / proposta / Quente / 80"></div></div>'+
+    '<div class="m-foot"><button class="btn btn-ghost btn-sm" data-action="close-modal">Cancelar</button><button class="btn btn-primary btn-sm" data-action="save-new-segment">Criar segmento</button></div>');
+  },
+  'save-new-segment': ()=>{
+    const n=$('#sg-name').value.trim(); const field=$('#sg-field').value; const op=$('#sg-op').value; const val=$('#sg-value').value.trim();
+    if(!n||!val){ toast('Preencha nome e valor do filtro.','warn'); return; }
+    const labels={origin:'origem',stage:'etapa',tag:'tag',score:'score',last:'inatividade > ',channel:'canal'};
+    state.customSegments.push({id:'sg'+Date.now(), n, d:(field==='last'?'inatividade ':'')+labels[field]+' '+op+' '+val, field, op, value:val});
+    persistState(); closeModal();
+    const c=state.contacts.filter(x=>segMatch(x,field,op,val)).length;
+    toast('Segmento "'+n+'" criado — '+c+' contato(s) correspondem agora.','success');
+    pushEvent('segment','Novo segmento: '+n);
+    render();
+  },
+  'del-segment': el=>{ state.customSegments=state.customSegments.filter(s=>s.id!==el.dataset.id); persistState(); toast('Segmento excluído','warn'); render(); },
+  /* ---- TENANTS (real) ---- */
+  'new-tenant': ()=>{
+    openModal('<div class="m-head"><h3>Nova empresa (tenant)</h3><div class="grow"></div><button class="icon-btn" data-action="close-modal"><span data-ic="x" data-size="14"></span></button></div>'+
+    '<div class="m-body"><div class="field"><span class="f-label">Nome da empresa</span><input class="f-input" id="tn-name" placeholder="Ex.: Agência Prisma"></div>'+
+    '<div class="field mt12"><span class="f-label">Plano</span><select class="f-select" id="tn-plan"><option value="starter">Starter — R$ 97/mês</option><option value="profissional">Profissional — R$ 497/mês</option><option value="enterprise">Enterprise — R$ 997/mês</option></select></div></div>'+
+    '<div class="m-foot"><button class="btn btn-ghost btn-sm" data-action="close-modal">Cancelar</button><button class="btn btn-primary btn-sm" data-action="save-new-tenant">Provisionar</button></div>');
+  },
+  'save-new-tenant': ()=>{
+    const n=$('#tn-name').value.trim();
+    if(!n){ toast('Informe o nome da empresa.','warn'); return; }
+    const plans={starter:{plan:'Starter',price:97,mu:3,mn:2,mc:10000},profissional:{plan:'Profissional',price:497,mu:10,mn:5,mc:50000},enterprise:{plan:'Enterprise',price:997,mu:25,mn:15,mc:200000}};
+    const pl=plans[$('#tn-plan').value]||plans.starter;
+    state.admin.tenants.push({id:'t'+Date.now(), name:n, plan:pl.plan, price:pl.price, users:{v:1,m:pl.mu}, numbers:{v:0,m:pl.mn}, contacts:{v:0,m:pl.mc}, agents:{v:0,m:2}, status:'ok'});
+    persistState(); closeModal();
+    toast('Empresa "'+n+'" provisionada no plano '+pl.plan+'.','success');
+    pushEvent('tenant','Nova empresa provisionada: '+n);
+    render();
+  },
+  'int-toggle': el=>{
+    const card = el.closest('[data-int]');
+    const name = card ? card.dataset.int : 'Integração';
+    INT_MAP[name] = el.checked;
+    try{ localStorage.setItem('nexus.integrations', JSON.stringify(INT_MAP)); }catch(e){}
+    toast(name+' '+(el.checked?'ativada':'desativada'), el.checked?'success':'warn');
+    pushEvent('integration', name+' '+(el.checked?'ativada':'desativada'));
+    render();
+  },
   'configure-int': ()=>evolutionConfigModal(),
   'close-qr-modal': ()=>{ if(waQRTimer) clearTimeout(waQRTimer); if(waQRCountdown) clearInterval(waQRCountdown); closeModal(); render(); },
   'wa-qr-connect': el=>{ const inst=el.dataset.instance||state.integration.evolution.instance||'nexus-prod'; showWhatsAppQRModal(inst); },
@@ -2369,9 +2534,68 @@ const ACTIONS = {
       if(out){ if(resp.ok){ out.textContent='Evento recebido pelo n8n ✓'; out.style.color='#15803D'; } else { out.textContent='n8n respondeu HTTP '+resp.status; out.style.color='#B91C1C'; } }
     }catch(err){ if(out){ out.textContent='Falha: '+err.message; out.style.color='#B91C1C'; } }
   },
-  'new-agent': ()=>toast('Novo agente (demo) — configure objetivo e ferramentas','info'),
-  'add-file': ()=>toast('Upload de arquivo para a base de conhecimento (demo)','info'),
-  'save-agent': ()=>toast('Configurações do agente salvas!','success'),
+  'refresh-admin': ()=>{
+    if(state.admin && state.admin.health) state.admin.health.last='agora';
+    toast('Status da infraestrutura atualizado','success');
+    render();
+  },
+  'new-agent': ()=>{
+    openModal('<div class="m-head"><h3>Novo agente de IA</h3><div class="grow"></div><button class="icon-btn" data-action="close-modal"><span data-ic="x" data-size="14"></span></button></div>'+
+    '<div class="m-body"><div class="field"><span class="f-label">Nome</span><input class="f-input" id="na-name" placeholder="Ex.: SDR WhatsApp"></div>'+
+    '<div class="field mt12"><span class="f-label">Objetivo</span><textarea class="f-textarea" id="na-obj" placeholder="Qualificar leads, responder dúvidas e agendar demonstrações..."></textarea></div>'+
+    '<div class="small muted mt12">Dica: conecte um LLM via n8n (Integrações) para respostas reais no teste de conversa.</div></div>'+
+    '<div class="m-foot"><button class="btn btn-ghost btn-sm" data-action="close-modal">Cancelar</button><button class="btn btn-primary btn-sm" data-action="save-new-agent">Criar agente</button></div>');
+  },
+  'save-new-agent': ()=>{
+    const n=$('#na-name')?.value.trim();
+    const obj=$('#na-obj')?.value.trim()||'Atender e qualificar leads.';
+    if(!n){ toast('Dê um nome ao agente.','warn'); return; }
+    const base=state.agents[0]||{};
+    const ag={...base, id:'ag'+Date.now(), name:n, obj, desc:obj.slice(0,80), files:[], stats:{c:0,tx:'—',t:'R$ 0'}, status:'ativo', statusLabel:'Ativo'};
+    state.agents.unshift(ag);
+    state.agentDetail=ag.id;
+    closeModal(); toast('Agente "'+n+'" criado — configure e salve.','success');
+    pushEvent('ai','Novo agente criado: '+n);
+    render();
+  },
+  'add-file': ()=>{
+    openModal('<div class="m-head"><h3>Adicionar à base de conhecimento</h3><div class="grow"></div><button class="icon-btn" data-action="close-modal"><span data-ic="x" data-size="14"></span></button></div>'+
+    '<div class="m-body"><div class="field"><span class="f-label">Nome/descrição do documento</span><input class="f-input" id="af-name" placeholder="Ex.: Tabela de preços 2026.pdf"></div></div>'+
+    '<div class="m-foot"><button class="btn btn-ghost btn-sm" data-action="close-modal">Cancelar</button><button class="btn btn-primary btn-sm" data-action="add-file-save">Adicionar</button></div>');
+  },
+  'add-file-save': ()=>{
+    const f=$('#af-name')?.value.trim();
+    const ag=state.agents.find(a=>a.id===state.agentDetail);
+    if(!f||!ag){ closeModal(); return; }
+    ag.files.push(f);
+    closeModal(); toast('"'+f+'" adicionado à base do agente.','success'); render();
+  },
+  'save-agent': ()=>{
+    const ag=state.agents.find(a=>a.id===state.agentDetail);
+    if(!ag) return;
+    const ta=document.querySelector('#content .f-textarea');
+    if(ta) ag.obj=ta.value.trim();
+    const sel=document.querySelector('#content .f-select');
+    if(sel) ag.pers=sel.value;
+    const rows=[...document.querySelectorAll('#content .check-row')];
+    const limitLabels=(ag.limits||[]).map(l=>l[0]);
+    rows.forEach(r=>{
+      const label=r.textContent.trim();
+      const chk=r.querySelector('input');
+      if(!chk) return;
+      const li=(ag.limits||[]).find(l=>l[0]===label);
+      if(li){ li[1]=chk.checked; }
+      else {
+        const has=(ag.tools||[]).includes(label);
+        if(has&&!chk.checked) ag.tools=ag.tools.filter(t=>t!==label);
+        if(!has&&chk.checked) ag.tools.push(label);
+      }
+    });
+    persistState();
+    toast('Configurações do agente "'+ag.name+'" salvas.','success');
+    pushEvent('ai','Agente atualizado: '+ag.name);
+    render();
+  },
   'back-agents': ()=>{ state.agentDetail=null; render(); },
   'open-agent': el=>{ state.agentDetail=el.dataset.id; render(); },
   'test-agent': ()=>{
@@ -2397,11 +2621,24 @@ const ACTIONS = {
     const name = document.querySelector('#modal-root select')?.value||'João Silva';
     state.appointments.push({id:'ap'+Date.now(), day, start, end:start+0.5, client:name, service:'Consultoria', consultant:'Alexandre', color:'#8B5CF6'});
     closeModal(); pushEvent('appt','Agendamento criado: '+name+' · hoje '+(start<12?'às '+start+'h':'às '+start+'h'));
-    toast('Agendamento de '+name+' criado e confirmado no WhatsApp (simulado)','success');
     n8nEmit('appointment.created',{client:name, day, start});
+    if(state.integration.evolution.connected){
+      toast('Enviando confirmação via WhatsApp para '+name+'...','info');
+      sendRealWhatsApp(name,'Olá '+name.split(' ')[0]+'! ✅ Confirmado: seu agendamento foi registrado. Qualquer dúvida é só chamar!').then(r=>{
+        toast(r.ok ? 'Confirmação enviada via WhatsApp para '+name : 'Agendamento salvo, mas o WhatsApp falhou ('+r.reason+')', r.ok?'success':'warn');
+        if(r.ok) n8nEmit('whatsapp.message_sent',{to:name, text:'confirmação de agendamento'});
+      });
+    } else {
+      toast('Agendamento de '+name+' criado. Conecte o WhatsApp para confirmações automáticas.','success');
+    }
     render();
   },
-  'slot-click': el=>{ const d=el.dataset.day, s=el.dataset.start; toast('Slot livre: '+d+' às '+String(s).padStart(2,'0')+':00 — clique em "Novo agendamento" para criar (demo)','info'); },
+  'slot-click': el=>{
+    ACTIONS['new-appt']();
+    const dSel=$('#ap-day'), sSel=$('#ap-start');
+    if(dSel){ const opt=[...dSel.options].find(o=>o.text.endsWith(' '+el.dataset.day)); if(opt) dSel.value=opt.value; }
+    if(sSel) sSel.value=el.dataset.start;
+  },
   'open-appt': el=>{
     const ap=state.appointments.find(a=>a.id===el.dataset.id); if(!ap) return;
     openModal('<div class="m-head"><h3>Agendamento</h3><div class="grow"></div><button class="icon-btn" data-action="close-modal"><span data-ic="x" data-size="14"></span></button></div>'+
@@ -2410,7 +2647,18 @@ const ACTIONS = {
     '<div class="card mt16" style="background:#F4F2FF;border-color:#E4DFFF"><div class="card-b flex" style="gap:9px;padding:11px"><span style="color:#6D28D9">'+icon('bot',15)+'</span><div class="small muted">Criado pela IA via WhatsApp: cliente pediu o horário e o agente confirmou automaticamente.</div></div></div>'+
     '</div><div class="m-foot"><button class="btn btn-danger btn-sm" data-action="cancel-appt" data-id="'+ap.id+'">Cancelar</button><button class="btn btn-ghost btn-sm" data-action="close-modal">Fechar</button><button class="btn btn-soft btn-sm" data-action="fake-wa">Enviar lembrete</button></div>');
   },
-  'cancel-appt': el=>{ state.appointments=state.appointments.filter(a=>a.id!==el.dataset.id); closeModal(); toast('Agendamento cancelado — cliente notificado (simulado)','warn'); render(); },
+  'cancel-appt': el=>{
+    const ap=state.appointments.find(a=>a.id===el.dataset.id);
+    state.appointments=state.appointments.filter(a=>a.id!==el.dataset.id);
+    closeModal();
+    if(ap && state.integration.evolution.connected){
+      sendRealWhatsApp(ap.client,'Olá! Seu agendamento foi cancelado. Quer remarcar? Responda aqui que ajustamos. 🗓️').then(r=>{
+        toast(r.ok?'Cancelado e cliente notificado via WhatsApp':'Cancelado (falha ao notificar: '+r.reason+')', r.ok?'success':'warn');
+        if(r.ok) n8nEmit('whatsapp.message_sent',{to:ap.client, text:'cancelamento'});
+      });
+    } else toast('Agendamento cancelado','warn');
+    render();
+  },
   'camp-toggle': el=>{
     const c=state.campaigns.find(x=>x.id===el.dataset.id);
     c.status = c.status==='ativa'?'pausada':'ativa';
@@ -2419,8 +2667,45 @@ const ACTIONS = {
   },
   'camp-run': el=>{
     const c=state.campaigns.find(x=>x.id===el.dataset.id);
-    toast('Campanha "'+c.name+'" — envio disparado na fila (worker simulado)','event');
-    pushEvent('camp','Campanha "'+c.name+'" enfileirou '+Math.min(500,c.total-c.sent).toLocaleString('pt-BR')+' mensagens');
+    if(!c) return;
+    if(!state.integration.evolution.connected){ toast('Conecte o WhatsApp (Integrações → Evolution GO) para disparar campanhas.','warn'); return; }
+    if(c.running){ toast('Esta campanha já está em disparo.','warn'); return; }
+    const targets=state.contacts.filter(ct=>ct.channel==='whatsapp' && ct.phone && ct.phone.replace(/\D/g,'').length>=10 && ct.stage!=='venda');
+    if(!targets.length){ toast('Nenhum contato elegível com número de WhatsApp válido.','warn'); return; }
+    openModal('<div class="m-head"><h3>Disparar campanha</h3><div class="grow"></div><button class="icon-btn" data-action="close-modal"><span data-ic="x" data-size="14"></span></button></div>'+
+    '<div class="m-body"><div class="bold" style="font-size:14px">'+esc(c.name)+'</div>'+
+    '<div class="small muted mt8">Serão enviadas mensagens REAIS via WhatsApp para <b>'+targets.length+' contatos</b> elegíveis (número válido, fora da etapa Venda), com intervalo de 1,2s entre envios.</div>'+
+    '<div class="card mt12" style="background:#FEF3E2;border-color:#F5CF8F"><div class="card-b flex" style="gap:9px;padding:11px"><span style="color:#B45309">'+icon('alert',15)+'</span><div class="small muted">O disparo usa a instância WhatsApp conectada. Use com responsabilidade — respeite consentimento e opt-out.</div></div></div>'+
+    '</div><div class="m-foot"><button class="btn btn-ghost btn-sm" data-action="close-modal">Cancelar</button><button class="btn btn-primary btn-sm" data-action="camp-start" data-id="'+c.id+'"><span data-ic="send" data-size="12" style="color:#fff"></span>Disparar agora ('+targets.length+')</button></div>');
+  },
+  'camp-start': async el=>{
+    const c=state.campaigns.find(x=>x.id===el.dataset.id);
+    if(!c || c.running) return;
+    closeModal();
+    const targets=state.contacts.filter(ct=>ct.channel==='whatsapp' && ct.phone && ct.phone.replace(/\D/g,'').length>=10 && ct.stage!=='venda');
+    c.running=true; c.total=targets.length; c.sent=0; c.status='ativa'; c.sched='Disparando agora';
+    toast('Disparo iniciado: '+targets.length+' mensagens via WhatsApp','event');
+    pushEvent('camp','Campanha "'+c.name+'" iniciou disparo para '+targets.length+' contatos');
+    n8nEmit('campaign.started',{campaign:c.name, total:targets.length});
+    render();
+    const msg=(c.msg&&c.msg.trim())?c.msg:'Olá! Passando para uma novidade especial. 😊\n\nSe não quiser mais receber mensagens, responda SAIR.';
+    for(const ct of targets){
+      if(!c.running) break;
+      const r=await sendRealWhatsApp(ct.name, msg);
+      if(r.ok){ c.sent++; pushEvent('wa','Campanha: enviado para '+ct.name); }
+      else pushEvent('wa','Campanha: falha para '+ct.name+' ('+r.reason+')');
+      render();
+      await new Promise(res=>setTimeout(res,1200));
+    }
+    c.running=false; c.sched='Enviado · '+c.sent+'/'+targets.length;
+    toast('Campanha "'+c.name+'" concluída: '+c.sent+'/'+targets.length+' enviadas','success');
+    pushEvent('camp','Campanha "'+c.name+'" concluída: '+c.sent+' enviadas');
+    n8nEmit('campaign.completed',{campaign:c.name, sent:c.sent, total:targets.length});
+    render();
+  },
+  'camp-stop': el=>{
+    const c=state.campaigns.find(x=>x.id===el.dataset.id);
+    if(c){ c.running=false; c.sched='Interrompido · '+c.sent+'/'+c.total; toast('Disparo interrompido após '+c.sent+' envios','warn'); render(); }
   },
   'camp-del': el=>{ state.campaigns=state.campaigns.filter(x=>x.id!==el.dataset.id); toast('Campanha excluída','warn'); render(); },
   'new-campaign': ()=>{
@@ -2523,8 +2808,14 @@ const ACTIONS = {
   'wf-run': ()=>{
     const wf=state.workflows[state.activeWorkflow];
     wf.runs++;
-    toast('Workflow "'+wf.name+'" executado — run #'+wf.runs+' (simulado)','event');
-    pushEvent('wf','Workflow "'+wf.name+'" executado (run #'+wf.runs+')');
+    if(state.integration.n8n.enabled && state.integration.n8n.webhookUrl){
+      n8nEmit('workflow.run',{workflow:wf.name, nodes:wf.nodes.length});
+      toast('Workflow "'+wf.name+'" disparado — evento enviado ao n8n','event');
+      pushEvent('wf','Workflow "'+wf.name+'" executado via n8n (run #'+wf.runs+')');
+    } else {
+      toast('Workflow "'+wf.name+'" ativado (run #'+wf.runs+'). Conecte o n8n para executar os passos de verdade.','info');
+      pushEvent('wf','Workflow "'+wf.name+'" executado (run #'+wf.runs+')');
+    }
     render();
   },
   'new-wf': ()=>{
@@ -2533,7 +2824,7 @@ const ACTIONS = {
       {id:'a1', type:'action', kind:'Ação', name:'Enviar WhatsApp', detail:'Boas-vindas', x:290, y:22}
     ], edges:[{from:'t1', to:'a1', label:''}]});
     state.activeWorkflow=state.workflows.length-1; state.selectedNode=null;
-    toast('Novo workflow criado (demo)','success'); render();
+    toast('Novo workflow criado — configure os blocos e execute','success'); render();
   },
   'new-contact': ()=>{
     openModal('<div class="m-head"><h3>Novo contato</h3><div class="grow"></div><button class="icon-btn" data-action="close-modal"><span data-ic="x" data-size="14"></span></button></div>'+
@@ -2615,7 +2906,22 @@ function init(){
   }
   state.analytics = makeAnalytics();
   state.admin = makeAdmin();
-  if(!state.selectedChat || !state.conversations.find(c=>c.id===state.selectedChat)) state.selectedChat = state.conversations[0].id;
+  if(window._savedTenants){ state.admin.tenants = window._savedTenants; }
+  if(!state.forms || !state.forms.length){
+    state.forms = [
+      {id:'f1', name:'Formulário de contato', subs:1284, conv:'9,2%', status:'ativo', redirect:'', fields:['Nome','E-mail','Telefone','Mensagem']},
+      {id:'f2', name:'Formulário de orçamento', subs:862, conv:'14,8%', status:'ativo', redirect:'', fields:['Nome','Empresa','Nº usuários','Mensagem']},
+      {id:'f3', name:'Form Meta Lead', subs:3210, conv:'6,1%', status:'ativo', redirect:'', fields:['Nome','Telefone','Cidade']}
+    ];
+  }
+  if(!state.landings || !state.landings.length){
+    state.landings = [
+      {id:'l1', name:'Nexus — Página principal', url:'nexus.app/sua-agencia', visits:8421, conv:'8,4%', status:'publicada', grad:'linear-gradient(135deg,#6D5DF6,#8B5CF6)'},
+      {id:'l2', name:'Oferta Black Novembro', url:'nexus.app/black-novembro', visits:3120, conv:'12,1%', status:'publicada', grad:'linear-gradient(135deg,#EA580C,#F59E0B)'}
+    ];
+  }
+  if(!state.customSegments) state.customSegments = [];
+  if(state.selectedChat!==null && !state.conversations.find(c=>c.id===state.selectedChat)) state.selectedChat = state.conversations[0].id;
   hydrateIcons(document);
   try{
     render();
