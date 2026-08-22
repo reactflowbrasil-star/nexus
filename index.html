@@ -708,7 +708,8 @@ const state = {
   analytics:{leads30:[], funnel:[], channels:[], origins:[]},
   admin:null,
   integration:{
-    evolution:{baseUrl:localStorage.getItem('nexus.evolution.baseUrl')||'https://gsqtqqfylbuqaxxcoi1eftho.reactfly.run.place',apiKey:localStorage.getItem('nexus.evolution.apiKey')||'',instance:localStorage.getItem('nexus.evolution.instance')||'nexus-prod',connected:!!localStorage.getItem('nexus.evolution.apiKey')}
+    evolution:{baseUrl:localStorage.getItem('nexus.evolution.baseUrl')||'https://gsqtqqfylbuqaxxcoi1eftho.reactfly.run.place',apiKey:localStorage.getItem('nexus.evolution.apiKey')||'',instance:localStorage.getItem('nexus.evolution.instance')||'nexus-prod',connected:!!localStorage.getItem('nexus.evolution.apiKey')},
+    n8n:{webhookUrl:localStorage.getItem('nexus.n8n.webhookUrl')||'',apiKey:localStorage.getItem('nexus.n8n.apiKey')||'',enabled:localStorage.getItem('nexus.n8n.enabled')==='1',log:[]}
   },
   activeWorkflow:0,
   selectedNode:null
@@ -722,6 +723,39 @@ async function evolutionRequest(path, options={}){
   let data; try{data=body?JSON.parse(body):{}}catch{data={raw:body};}
   if(!response.ok) throw new Error(data.message||data.error||'Evolution GO respondeu '+response.status);
   return data;
+}
+
+try{ state.integration.n8n.log = JSON.parse(localStorage.getItem('nexus.n8n.log')||'[]'); }catch(e){}
+
+/* ================= N8N (automação via webhooks) ================= */
+async function n8nEmit(event, data){
+  const cfg = state.integration.n8n;
+  if(!cfg.enabled || !cfg.webhookUrl) return;
+  const payload = { source:'nexus-crm', event, data, timestamp:new Date().toISOString() };
+  let status='ok', detail='';
+  try{
+    const resp = await fetch(cfg.webhookUrl, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', ...(cfg.apiKey ? {'X-Nexus-Token':cfg.apiKey} : {}) },
+      body: JSON.stringify(payload)
+    });
+    if(!resp.ok){ status='erro'; detail='n8n respondeu HTTP '+resp.status; }
+  }catch(err){ status='erro'; detail=err.message||'falha de rede'; }
+  cfg.log.unshift({event,status,detail,time:nowTime()});
+  if(cfg.log.length>20) cfg.log.pop();
+  try{ localStorage.setItem('nexus.n8n.log', JSON.stringify(cfg.log)); }catch(e){}
+  if(status==='erro') toast('n8n: falha ao enviar "'+event+'" — '+detail,'warn');
+}
+
+function n8nConfigModal(){
+  const c = state.integration.n8n;
+  openModal('<div class="m-head"><h3>'+icon('zap',15,'#EA580C')+' n8n — Automação</h3><div class="grow"></div><button class="icon-btn" data-action="close-modal"><span data-ic="x" data-size="14"></span></button></div>'+
+  '<div class="m-body"><div class="small muted mb12">Dispare eventos do CRM para seus workflows n8n. No n8n, crie um workflow com o nó <b>Webhook</b> (método POST) e cole aqui a URL de produção.</div>'+
+  '<div class="field"><span class="f-label">URL do Webhook (produção)</span><input class="f-input" id="n8-url" value="'+esc(c.webhookUrl)+'" placeholder="https://seu-n8n.com/webhook/nexus"></div>'+
+  '<div class="field mt12"><span class="f-label">Token secreto (opcional — header X-Nexus-Token)</span><input class="f-input" id="n8-token" type="password" value="'+esc(c.apiKey)+'"></div>'+
+  '<div class="card mt12" style="background:#F4F2FF;border-color:#E4DFFF"><div class="card-b flex" style="gap:9px;padding:11px"><span style="color:#6D28D9">'+icon('zap',15)+'</span><div class="small muted" style="line-height:1.6">Eventos disparados: <b style="color:var(--text)">contact.created</b> · <b style="color:var(--text)">contact.note_added</b> · <b style="color:var(--text)">opportunity.created</b> · <b style="color:var(--text)">opportunity.stage_changed</b> · <b style="color:var(--text)">campaign.created</b> · <b style="color:var(--text)">appointment.created</b> · <b style="color:var(--text)">whatsapp.message_sent</b> · <b style="color:var(--text)">whatsapp.connected / disconnected</b></div></div></div>'+
+  '<div class="flex mt16" style="gap:8px"><button class="btn btn-soft btn-sm" data-action="test-n8n">Enviar evento de teste</button><span id="n8-result" class="small muted"></span></div></div>'+
+  '<div class="m-foot"><button class="btn btn-ghost btn-sm" data-action="close-modal">Cancelar</button><button class="btn btn-primary btn-sm" data-action="save-n8n">Salvar integração</button></div>');
 }
 
 function evolutionConfigModal(){
@@ -1892,6 +1926,25 @@ Views.analytics = function(){
 };
 
 /* ---------- INTEGRAÇÕES ---------- */
+function integracoesN8nCard(){
+  const n8 = state.integration.n8n;
+  const logHtml = !n8.webhookUrl
+    ? '<div class="small muted" style="padding:10px 2px">Configure a URL do webhook do seu workflow n8n para receber os eventos do CRM em tempo real.</div>'
+    : (n8.log.length
+        ? n8.log.map(l=>'<div class="health-row"><span class="pulse '+(l.status==='ok'?'ok':'err')+'"></span><div class="grow"><div class="bold" style="font-size:12.3px;font-family:monospace">'+esc(l.event)+'</div>'+(l.detail?'<div class="tiny muted">'+esc(l.detail)+'</div>':'')+'</div><span class="tiny muted">'+l.time+'</span></div>').join('')
+        : '<div class="small muted" style="padding:10px 2px">Webhook configurado — aguardando o primeiro evento dispara-do pelo CRM.</div>');
+  return `
+  <div class="card mt16">
+    <div class="card-h">
+      <h3>n8n — Automação de workflows</h3>
+      <span class="badge ${n8.enabled?'b-green':'b-gray'}">${n8.enabled?'Ativo':'Inativo'}</span>
+      <div class="grow"></div>
+      <label class="switch" title="Ativar/pausar automações"><input type="checkbox" ${n8.enabled?'checked':''} data-action="toggle-n8n"><span class="sl"></span></label>
+      <button class="btn btn-soft btn-sm" data-action="configure-n8n"><span data-ic="settings" data-size="12"></span>Configurar</button>
+    </div>
+    <div class="card-b" style="padding:6px 14px">${logHtml}</div>
+  </div>`;
+}
 Views.integracoes = function(){
   const ints = [
     {n:'Meta Ads', d:'Leads Ads direto no CRM via webhook', s:'conectado', ic:'meta', bg:'#1877F2', on:true},
@@ -1910,7 +1963,9 @@ Views.integracoes = function(){
   </div>
   <div class="grid g4">
     ${ints.map(i=>{const isEvo=i.n==='Evolution GO';const evoC=state.integration.evolution.connected;return '<div class="card int-card" '+(isEvo?'data-action="configure-int" style="cursor:pointer"':'')+'><div class="between"><span class="int-logo" style="background:'+i.bg+'">'+(i.n==='Meta Ads'?'f':i.n==='WhatsApp Cloud API'?'WA':isEvo?'EVO':i.n==='Google Agenda'?'G':i.n==='Instagram'?'IG':i.n==='Facebook Messenger'?'f':i.n==='Zapier'?'Z':'{ }')+'</span><label class="switch"><input type="checkbox" '+(i.on?'checked':'')+' data-action="int-toggle"><span class="sl"></span></label></div><div><div class="int-name">'+i.n+'</div><div class="int-desc">'+i.d+'</div></div><span class="badge '+(isEvo?(evoC?'b-green':'b-amber'):(i.on?'b-green':'b-gray'))+'">'+(isEvo?(evoC?'Conectado':'Clique para conectar'):(i.on?'Conectado':i.s))+'</span>'+(isEvo?'<div class="flex mt8" style="gap:6px;justify-content:flex-end;width:100%">'+(evoC?'<button class="btn btn-danger btn-sm" data-action="wa-disconnect" data-instance="'+esc(state.integration.evolution.instance)+'"><span data-ic="power" data-size="11"></span>Desconectar</button>':'<button class="btn btn-primary btn-sm" data-action="wa-qr-connect" data-instance="'+esc(state.integration.evolution.instance)+'"><span data-ic="phone" data-size="11" style="color:#fff"></span>Conectar WhatsApp</button>')+'<button class="btn btn-ghost btn-sm" data-action="configure-int"><span data-ic="settings" data-size="11"></span>Config</button></div>':'')+'</div>';}).join('')}
-  </div>`;
+  </div>
+  ${integracoesN8nCard()}
+`;
 };
 
 /* ---------- SaaS ADMIN ---------- */
@@ -2030,6 +2085,7 @@ function sendChat(text){
         toast('Falha ao enviar WhatsApp: '+r.reason,'warn');
       } else {
         pushEvent('wa','Mensagem enviada via WhatsApp para '+conv.name);
+        n8nEmit('whatsapp.message_sent',{to:conv.name, text:msg});
       }
       persistState();
     });
@@ -2081,6 +2137,7 @@ function bindKanban(){
       recomputeSums();
       pushEvent('stage','Oportunidade "'+item.name+'" movida: '+fromStage.name+' → '+toStage.name);
       toast('<code>opportunity.stage_changed</code><br>'+item.name+' · '+fromStage.name+' → '+toStage.name,'event');
+      n8nEmit('opportunity.stage_changed',{opportunity:item.name, from:fromStage.id, to:toStage.id, value:item.value});
       render();
     });
   });
@@ -2204,6 +2261,7 @@ function showQRSuccess(statusEl, data) {
   const foot = document.querySelector('.m-foot');
   if (foot) { foot.innerHTML = '<div></div><div class="flex" style="gap:6px"><button class="btn btn-danger btn-sm" data-action="wa-disconnect" data-instance="' + esc(state.integration.evolution.instance) + '"><span data-ic="power" data-size="12"></span>Desconectar</button><button class="btn btn-primary btn-sm" data-action="close-qr-modal">Fechar</button></div>'; hydrateIcons(foot); }
   pushEvent('integration', 'WhatsApp conectado via Evolution GO');
+  n8nEmit('whatsapp.connected',{instance:state.integration.evolution.instance});
   toast('WhatsApp conectado com sucesso!', 'success');
 }
 
@@ -2212,6 +2270,7 @@ async function disconnectWhatsApp(instanceName) {
     await evolutionRequest('/instance/disconnect', { method: 'POST', body: JSON.stringify({}) });
     state.integration.evolution.connected = false;
     localStorage.removeItem('nexus.evolution.connected');
+    n8nEmit('whatsapp.disconnected',{instance:instanceName});
     toast('WhatsApp desconectado', 'warn');
   } catch (e) { toast('Erro ao desconectar: ' + e.message, 'warn'); }
 }
@@ -2225,8 +2284,10 @@ const ACTIONS = {
   'add-note': ()=>{
     const inp=$('#note-input'); if(!inp||!inp.value.trim()) return;
     const c=state.contacts.find(x=>x.name===document.querySelector('.dp-head .bold').textContent.trim())||state.contacts[0];
-    c.timeline.unshift({type:'user', text:'Nota: '+inp.value.trim(), time:nowTime()});
+    const nota=inp.value.trim();
+    c.timeline.unshift({type:'user', text:'Nota: '+nota, time:nowTime()});
     inp.value=''; toast('Nota adicionada à timeline de '+c.name,'success'); pushEvent('contact','Nota adicionada em '+c.name);
+    n8nEmit('contact.note_added',{contact:c.name, note:nota});
     const cid = state.contacts.indexOf(c);
     openDrawer(contactDrawer(c));
   },
@@ -2279,6 +2340,35 @@ const ACTIONS = {
     try{ const old=state.integration.evolution; state.integration.evolution={...old,baseUrl:$('#evo-url').value.trim(),apiKey:$('#evo-key').value.trim(),instance:$('#evo-instance').value.trim()}; await evolutionRequest('/instance/all'); if(out){out.textContent='Conexão OK';out.style.color='#15803D';} }
     catch(err){if(out){out.textContent=err.message;out.style.color='#B91C1C';}}
   },
+  'configure-n8n': ()=>n8nConfigModal(),
+  'toggle-n8n': el=>{
+    state.integration.n8n.enabled = el.checked;
+    try{ localStorage.setItem('nexus.n8n.enabled', el.checked?'1':'0'); }catch(e){}
+    toast(el.checked?'Automações n8n ativadas':'Automações n8n pausadas', el.checked?'success':'warn');
+    pushEvent('integration','n8n '+(el.checked?'ativado':'pausado'));
+    render();
+  },
+  'save-n8n': ()=>{
+    const url=$('#n8-url').value.trim();
+    const token=$('#n8-token').value.trim();
+    if(!url){ toast('Informe a URL do webhook n8n.','warn'); return; }
+    state.integration.n8n.webhookUrl=url;
+    state.integration.n8n.apiKey=token;
+    state.integration.n8n.enabled=true;
+    try{ localStorage.setItem('nexus.n8n.webhookUrl',url); localStorage.setItem('nexus.n8n.apiKey',token); localStorage.setItem('nexus.n8n.enabled','1'); }catch(e){}
+    closeModal(); toast('Integração n8n salva e ativada.','success'); pushEvent('integration','n8n configurado');
+    n8nEmit('integration.configured',{webhook:url});
+    render();
+  },
+  'test-n8n': async ()=>{
+    const out=$('#n8-result'); if(out) out.textContent='Enviando...';
+    const url=$('#n8-url').value.trim(); const token=$('#n8-token').value.trim();
+    if(!url){ if(out){ out.textContent='Informe a URL do webhook.'; out.style.color='#B91C1C'; } return; }
+    try{
+      const resp=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json',...(token?{'X-Nexus-Token':token}:{})},body:JSON.stringify({source:'nexus-crm',event:'test.ping',data:{msg:'Olá do Nexus CRM!'},timestamp:new Date().toISOString()})});
+      if(out){ if(resp.ok){ out.textContent='Evento recebido pelo n8n ✓'; out.style.color='#15803D'; } else { out.textContent='n8n respondeu HTTP '+resp.status; out.style.color='#B91C1C'; } }
+    }catch(err){ if(out){ out.textContent='Falha: '+err.message; out.style.color='#B91C1C'; } }
+  },
   'new-agent': ()=>toast('Novo agente (demo) — configure objetivo e ferramentas','info'),
   'add-file': ()=>toast('Upload de arquivo para a base de conhecimento (demo)','info'),
   'save-agent': ()=>toast('Configurações do agente salvas!','success'),
@@ -2308,6 +2398,7 @@ const ACTIONS = {
     state.appointments.push({id:'ap'+Date.now(), day, start, end:start+0.5, client:name, service:'Consultoria', consultant:'Alexandre', color:'#8B5CF6'});
     closeModal(); pushEvent('appt','Agendamento criado: '+name+' · hoje '+(start<12?'às '+start+'h':'às '+start+'h'));
     toast('Agendamento de '+name+' criado e confirmado no WhatsApp (simulado)','success');
+    n8nEmit('appointment.created',{client:name, day, start});
     render();
   },
   'slot-click': el=>{ const d=el.dataset.day, s=el.dataset.start; toast('Slot livre: '+d+' às '+String(s).padStart(2,'0')+':00 — clique em "Novo agendamento" para criar (demo)','info'); },
@@ -2342,7 +2433,7 @@ const ACTIONS = {
     const ta=$('#cp-msg'); if(ta){ ta.oninput=()=>{ $('#cp-count').textContent=ta.value.length; }; ta.dispatchEvent(new Event('input')); }
   },
   'save-camp-draft': ()=>{ const n=$('#cp-name')?.value||'Campanha sem nome'; state.campaigns.unshift({id:'cp'+Date.now(), name:n, channel:'whatsapp', segment:'Novos leads', status:'rascunho', sent:0, total:0, rate:0, sched:'Não agendada'}); closeModal(); toast('Rascunho "'+n+'" salvo','success'); render(); },
-  'save-camp': ()=>{ const n=$('#cp-name')?.value||'Campanha sem nome'; const campMsg=$('#cp-msg')?.value||''; state.campaigns.unshift({id:'cp'+Date.now(), name:n, channel:'whatsapp', segment:'Novos leads', status:'ativa', sent:0, total:1200, rate:0, sched:'Seg 10:00', msg:campMsg}); closeModal(); toast('Campanha "'+n+'" ativada — primeiro envio agendado','success'); pushEvent('camp','Campanha "'+n+'" criada e ativada'); render(); },
+  'save-camp': ()=>{ const n=$('#cp-name')?.value||'Campanha sem nome'; const campMsg=$('#cp-msg')?.value||''; state.campaigns.unshift({id:'cp'+Date.now(), name:n, channel:'whatsapp', segment:'Novos leads', status:'ativa', sent:0, total:1200, rate:0, sched:'Seg 10:00', msg:campMsg}); closeModal(); toast('Campanha "'+n+'" ativada — primeiro envio agendado','success'); pushEvent('camp','Campanha "'+n+'" criada e ativada'); n8nEmit('campaign.created',{name:n, status:'ativa'}); render(); },
   'new-opp': ()=>{
     openModal('<div class="m-head"><h3>Nova oportunidade</h3><div class="grow"></div><button class="icon-btn" data-action="close-modal"><span data-ic="x" data-size="14"></span></button></div>'+
     '<div class="m-body"><div class="f-row"><div class="field"><span class="f-label">Contato</span><select class="f-select">'+state.contacts.map(c=>'<option>'+c.name+'</option>').join('')+'</select></div><div class="field"><span class="f-label">Valor (R$)</span><input class="f-input" id="op-val" type="number" value="2500"></div></div>'+
@@ -2360,6 +2451,7 @@ const ACTIONS = {
     closeModal();
     toast('<code>opportunity.created</code><br>'+name+' · '+BRL(val)+' na etapa '+stageMeta[stage].name,'event');
     pushEvent('stage','Oportunidade criada: '+name+' · '+BRL(val)+' ('+stageMeta[stage].name+')');
+    n8nEmit('opportunity.created',{contact:name, value:val, stage});
     render();
   },
   'open-opp': el=>{
@@ -2383,6 +2475,7 @@ const ACTIONS = {
     recomputeSums(); closeModal();
     toast('<code>opportunity.stage_changed</code><br>'+item.name+' · '+fromStage.name+' → '+toStage.name,'event');
     pushEvent('stage','Oportunidade "'+item.name+'" movida: '+fromStage.name+' → '+toStage.name);
+    n8nEmit('opportunity.stage_changed',{opportunity:item.name, from:fromStage.id, to:toStage.id, value:item.value});
     render();
   },
   'del-opp': el=>{
@@ -2465,6 +2558,7 @@ const ACTIONS = {
     closeModal();
     toast('<code>contact.created</code><br>'+n+' criado no CRM — workflow de boas-vindas disparado','event');
     pushEvent('contact','Novo contato criado: '+n);
+    n8nEmit('contact.created',{name:n, company, phone, email, origin});
     render();
   },
   'quick-new': ()=>{
