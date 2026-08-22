@@ -718,10 +718,14 @@ const state = {
 async function evolutionRequest(path, options={}){
   const cfg=state.integration.evolution;
   if(!cfg.apiKey) throw new Error('Configure a API key do Evolution GO primeiro.');
-  const response=await fetch(cfg.baseUrl.replace(/\/$/,'')+path,{...options,headers:{'Content-Type':'application/json',apikey:cfg.apiKey,...(options.headers||{})}});
+  const response=await fetch(cfg.baseUrl.replace(/\/$/,'')+path,{...options,headers:{'Content-Type':'application/json',apikey:(options.apikey||cfg.apiKey),...(options.headers||{})}});
   const body=await response.text();
   let data; try{data=body?JSON.parse(body):{}}catch{data={raw:body};}
-  if(!response.ok) throw new Error(data.message||data.error||'Evolution GO respondeu '+response.status);
+  if(!response.ok){
+    if(response.status===401||response.status===403)
+      throw new Error('API Key inválida ou sem permissão — corrija em Integrações → Evolution GO → Config');
+    throw new Error(data.message||data.error||('Evolution GO respondeu '+response.status));
+  }
   return data;
 }
 
@@ -768,6 +772,7 @@ function evolutionConfigModal(){
     '<div class="field"><span class="f-label">URL da API</span><input class="f-input" id="evo-url" value="'+esc(c.baseUrl)+'"></div>'+ 
     '<div class="field mt12"><span class="f-label">API key</span><input class="f-input" id="evo-key" type="password" value="'+esc(c.apiKey)+'" placeholder="GLOBAL_API_KEY"></div>'+ 
     '<div class="field mt12"><span class="f-label">Instância padrão</span><input class="f-input" id="evo-instance" value="'+esc(c.instance)+'"></div>'+ 
+    '<div class="field mt12"><span class="f-label">Token da instância (envio de mensagens)</span><input class="f-input" id="evo-token" type="password" value="'+esc(localStorage.getItem('nexus.evolution.instanceToken')||c.instance)+'" placeholder="igual ao nome da instância, se não souber"></div>'+ 
     '<div class="flex mt16" style="gap:8px"><button class="btn btn-soft btn-sm" data-action="evo-test">Testar conexão</button><span id="evo-result" class="small muted"></span></div></div>'+ 
     '<div class="m-foot"><button class="btn btn-ghost btn-sm" data-action="close-modal">Cancelar</button><button class="btn btn-primary btn-sm" data-action="save-evo">Salvar integração</button></div>');
 }
@@ -1463,12 +1468,23 @@ async function refreshEvolutionStatus(){
   }catch(e){ /* silencioso */ }
 }
 async function sendRealWhatsApp(contactName, text){
+  const cfg = state.integration.evolution;
+  if(!cfg.apiKey) return {ok:false, reason:'API Key do Evolution GO não configurada (Integrações → Config)'};
+  if(!cfg.connected) return {ok:false, reason:'WhatsApp desconectado — escaneie o QR Code em Integrações'};
   const contact = state.contacts.find(c=>c.name===contactName);
   if(!contact || !contact.phone) return {ok:false, reason:'sem número'};
   const number = String(contact.phone).replace(/\D/g,'');
   if(number.length < 10) return {ok:false, reason:'número inválido'};
+  // Auth do Evolution GO: envio usa o TOKEN DA INSTÂNCIA; a Global Key é só p/ gerenciar instâncias.
+  const instToken = localStorage.getItem('nexus.evolution.instanceToken') || cfg.instance || cfg.apiKey;
   try{
-    await evolutionRequest('/send/text', { method:'POST', body: JSON.stringify({ number: number, text: text }) });
+    try{
+      await evolutionRequest('/send/text', { method:'POST', apikey: instToken, body: JSON.stringify({ number: number, text: text }) });
+    }catch(e1){
+      if(!/not authorized|401|403|inválida|permiss/i.test(e1.message)) throw e1;
+      // fallback: alguns setups aceitam a Global Key no envio
+      await evolutionRequest('/send/text', { method:'POST', body: JSON.stringify({ number: number, text: text }) });
+    }
     return { ok:true };
   }catch(err){ return { ok:false, reason: err.message }; }
 }
@@ -2357,7 +2373,10 @@ async function startQRFlow(instanceName) {
   try {
     statusEl.className = 'qr-status connecting';
     statusEl.textContent = 'Iniciando instancia...';
-    try { await evolutionRequest('/instance/create', { method: 'POST', body: JSON.stringify({ name: instanceName, token: instanceName }) }); } catch(e){}
+    try {
+      await evolutionRequest('/instance/create', { method: 'POST', body: JSON.stringify({ name: instanceName, token: instanceName }) });
+      localStorage.setItem('nexus.evolution.instanceToken', instanceName);
+    } catch(e){}
     statusEl.textContent = 'Conectando...';
     await evolutionRequest('/instance/connect', { method: 'POST', body: JSON.stringify({}) });
     statusEl.className = 'qr-status waiting';
@@ -2609,8 +2628,9 @@ const ACTIONS = {
     const apiKey=$('#evo-key').value.trim();
     const instance=$('#evo-instance').value.trim()||'nexus-prod';
     if(!baseUrl||!apiKey){toast('Informe a URL e a API key do Evolution GO.','warn');return;}
+    const instToken=$('#evo-token').value.trim()||instance;
     state.integration.evolution={baseUrl,apiKey,instance,connected:true};
-    localStorage.setItem('nexus.evolution.baseUrl',baseUrl); localStorage.setItem('nexus.evolution.apiKey',apiKey); localStorage.setItem('nexus.evolution.instance',instance);
+    localStorage.setItem('nexus.evolution.baseUrl',baseUrl); localStorage.setItem('nexus.evolution.apiKey',apiKey); localStorage.setItem('nexus.evolution.instance',instance); localStorage.setItem('nexus.evolution.instanceToken',instToken);
     closeModal(); toast('Evolution GO conectado ao Nexus.','success'); pushEvent('integration','Evolution GO configurado · '+instance); render();
   },
   'evo-test': async ()=>{
