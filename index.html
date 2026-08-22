@@ -1337,9 +1337,12 @@ Views.conversas = function(){
   const totalUnread = state.conversations.reduce((a,c)=>a+c.unread,0);
   return `
   <div class="page-head">
-    <div><div class="ph-title">Conversas</div><div class="ph-sub">${totalUnread} não lidas · inbox omnichannel com IA atendendo em tempo real</div></div>
+    <div><div class="ph-title">Conversas</div><div class="ph-sub">${totalUnread} não lidas · inbox sincronizada em tempo real com a conexão WhatsApp</div></div>
     <div class="ph-actions">
-      <button class="btn btn-ghost btn-sm"><span data-ic="inbox" data-size="13"></span>Caixa de entrada</button>
+      ${state.integration.evolution.connected
+        ? '<span class="badge b-green" style="align-self:center">'+icon('check',11)+' WhatsApp sincronizado'+(inboxSync.lastSync?' · '+inboxSync.lastSync:'')+'</span>'
+        : '<button class="btn btn-soft btn-sm" data-action="wa-qr-connect">'+icon('phone',12)+' Conectar WhatsApp</button>'}
+      <button class="btn btn-ghost btn-sm" data-action="sync-inbox" ${state.integration.evolution.connected?'':'disabled'}><span data-ic="refresh" data-size="13"></span>${inboxSync.syncing?'Sincronizando...':'Sincronizar'}</button>
       <button class="btn btn-ghost btn-sm"><span data-ic="filter" data-size="13"></span>Filtros</button>
     </div>
   </div>
@@ -1354,7 +1357,7 @@ Views.conversas = function(){
       </div>
       <div class="cl-items">
         ${convs.map(c=>{
-          const last = c.messages[c.messages.length-1];
+          const last = c.messages && c.messages.length ? c.messages[c.messages.length-1] : {text:(c.real?'Sincronizando mensagens…':''), time:c.time||''};
           return '<div class="cl-item '+(sel.id===c.id?'active':'')+'" data-action="open-chat" data-id="'+c.id+'">'+
             av(c.name,38)+
             '<div class="cli-mid"><div class="cli-name">'+c.name+(c.ai?' <span class="badge b-violet" style="padding:1px 6px;font-size:9px">IA</span>':'')+'</div><div class="cli-prev">'+esc(last.text)+'</div></div>'+
@@ -1454,6 +1457,7 @@ async function refreshEvolutionStatus(){
       if(on) localStorage.setItem('nexus.evolution.connected','true');
       else localStorage.removeItem('nexus.evolution.connected');
       pushEvent('integration','Status WhatsApp sincronizado: '+(on?'conectado':'desconectado'));
+      if(on) syncEvolutionInbox();
       render();
     }
   }catch(e){ /* silencioso */ }
@@ -1467,6 +1471,115 @@ async function sendRealWhatsApp(contactName, text){
     await evolutionRequest('/send/text', { method:'POST', body: JSON.stringify({ number: number, text: text }) });
     return { ok:true };
   }catch(err){ return { ok:false, reason: err.message }; }
+}
+
+/* ================= INBOX REAL (sincronização com Evolution GO) ================= */
+const inboxSync = { timer:null, lastSync:null, syncing:false, lastError:null };
+
+function evoMsgText(m){
+  const mm = m.message || {};
+  return (mm.conversation || (mm.extendedTextMessage||{}).text || (mm.imageMessage||{}).caption ||
+          (mm.videoMessage||{}).caption || (mm.documentMessage||{}).caption ||
+          (mm.buttonsResponseMessage||{}).selectedDisplayText || '').trim();
+}
+function normalizeEvoMsg(m){
+  const text = evoMsgText(m);
+  if(!text) return null;
+  const ts = Number(m.messageTimestamp||0)*1000;
+  const d = new Date(ts||Date.now());
+  return {
+    from: (m.key&&m.key.fromMe)?'out':'in',
+    text: String(text),
+    time: d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}),
+    _ts: ts
+  };
+}
+
+async function syncEvolutionInbox(){
+  const cfg = state.integration.evolution;
+  if(!cfg.connected || !cfg.apiKey || !cfg.baseUrl || inboxSync.syncing) return;
+  inboxSync.syncing = true;
+  let added = 0;
+  try{
+    let raw;
+    try{
+      raw = await evolutionRequest('/chat/findContacts/'+encodeURIComponent(cfg.instance), {method:'POST', body: JSON.stringify({page:1,offset:100})});
+    }catch(e1){
+      raw = await evolutionRequest('/chat/findContacts/'+encodeURIComponent(cfg.instance)+'?page=1&offset=100', {method:'GET'});
+    }
+    const list = Array.isArray(raw) ? raw : ((raw&&(raw.contacts||raw.data))||[]);
+    for(const ct of list){
+      const jid = ct.remoteJid || ct.jid || '';
+      if(!jid || jid.endsWith('@g.us') || jid.endsWith('@newsletter')) continue; // ignora grupos
+      const phone = String(jid).split('@')[0].replace(/\D/g,'');
+      if(!phone || phone.length < 10) continue;
+      const name = (ct.pushName || ct.name || '+'+phone).trim();
+      // contato no CRM
+      let contact = state.contacts.find(x=>String(x.phone||'').replace(/\D/g,'')===phone);
+      if(!contact){
+        contact = {id:'wa'+phone, name, company:'—', phone:'+'+phone, email:'—', channel:'whatsapp', origin:'WhatsApp', tags:['Lead'], score:50, stage:'novo', value:0, owner:'Carlos', last:Date.now(), lastLabel:'Contato via WhatsApp',
+          timeline:[]};
+        state.contacts.unshift(contact);
+        added++;
+        n8nEmit('contact.created', {name, phone:'+'+phone, origin:'WhatsApp'});
+      } else if(contact.name.startsWith('+') && name && !name.startsWith('+')){
+        contact.name = name; // atualiza com pushName real
+      }
+      // conversa na inbox
+      const cid = 'wa-'+jid.split('@')[0];
+      let conv = state.conversations.find(x=>x.id===cid);
+      if(!conv){
+        conv = {id:cid, name:contact.name, channel:'whatsapp', remoteJid:jid, unread:0, ai:false, status:'online', time:'—', messages:[], real:true};
+        state.conversations.unshift(conv);
+      } else {
+        conv.remoteJid = jid; conv.real = true;
+        if(contact.name && conv.name!==contact.name){ conv.name = contact.name; }
+      }
+    }
+    if(list.length){ inboxSync.lastSync = nowTime(); inboxSync.lastError = null; persistState();
+      if(state.view==='conversas') render();
+      if(added) pushEvent('chat', added+' contato(s) importados do WhatsApp');
+    }
+  }catch(e){
+    inboxSync.lastError = e.message;
+  }
+  inboxSync.syncing = false;
+}
+
+async function loadRealMessages(conv, silent){
+  if(!conv || !conv.remoteJid) return;
+  const cfg = state.integration.evolution;
+  if(!cfg.apiKey) return;
+  try{
+    let raw = await evolutionRequest('/chat/findMessages/'+encodeURIComponent(cfg.instance),
+      {method:'POST', body: JSON.stringify({remoteJid: conv.remoteJid, page:1, offset:40})});
+    const recs = Array.isArray(raw) ? raw : ((raw && raw.messages && (raw.messages.records||raw.messages)) || raw.data || []);
+    const msgs = recs.map(normalizeEvoMsg).filter(Boolean);
+    msgs.sort((a,b)=>(a._ts||0)-(b._ts||0));
+    if(msgs.length){
+      conv.messages = msgs.map(m=>({from:m.from,text:m.text,time:m.time}));
+      conv.real = true;
+      const lastIn = [...msgs].reverse().find(m=>m.from==='in');
+      if(lastIn) conv.time = lastIn.time;
+      persistState();
+      if(state.view==='conversas' && state.selectedChat===conv.id) render();
+    } else if(!silent && !conv.messages.length){
+      toast('Nenhuma mensagem encontrada nesta conversa ainda.','info');
+    }
+  }catch(e){
+    if(!silent) toast('Falha ao carregar mensagens: '+e.message,'warn');
+  }
+}
+
+function startInboxPolling(){
+  if(inboxSync.timer) clearInterval(inboxSync.timer);
+  inboxSync.timer = setInterval(async ()=>{
+    if(document.hidden) return;
+    await refreshEvolutionStatus();
+    await syncEvolutionInbox();
+    const sel = state.conversations.find(c=>c.id===state.selectedChat);
+    if(sel && sel.real) loadRealMessages(sel, true);
+  }, 12000);
 }
 
 /* ================= ROUTER ================= */
@@ -2768,7 +2881,8 @@ const ACTIONS = {
     recomputeSums(); closeModal(); toast('Oportunidade excluída','warn'); render();
   },
   'toggle-evlog': ()=>{ const p=$('#ev-panel'); if(!p) return; const hidden = p.style.display==='none'; p.style.display = hidden?'':'none'; toast((hidden?'Exibindo':'Ocultando')+' painel de eventos','info'); },
-  'open-chat': el=>{ state.selectedChat=el.dataset.id; render(); },
+  'open-chat': el=>{ state.selectedChat=el.dataset.id; render(); const cv=state.conversations.find(x=>x.id===state.selectedChat); if(cv) loadRealMessages(cv); },
+  'sync-inbox': ()=>{ if(!state.integration.evolution.connected){ toast('Conecte o WhatsApp primeiro (QR Code nas Integrações)','warn'); return; } syncEvolutionInbox().then(()=>{ const cv=state.conversations.find(x=>x.id===state.selectedChat); if(cv) loadRealMessages(cv); toast('Caixa de entrada sincronizada com o WhatsApp ✅','success'); }); },
   'send-chat': ()=>sendChat(),
   'quick-reply': el=>sendChat(el.textContent.trim()),
   'assume-chat': ()=>{
@@ -2946,7 +3060,8 @@ function init(){
     persistState();
     render();
   }
-  refreshEvolutionStatus();
+  refreshEvolutionStatus().then(()=>syncEvolutionInbox());
+  startInboxPolling();
   setTimeout(()=>toast(restored?'Bem-vindo de volta! Seus dados foram carregados. 🚀':'Bem-vindo ao Nexus CRM! 🚀 Tudo que você criar fica salvo neste navegador.','success','Boas-vindas'), 600);
 }
 init();
