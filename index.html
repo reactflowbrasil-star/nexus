@@ -2478,9 +2478,12 @@ const ACTIONS = {
 
 /* ================= GLOBAL DELEGATION ================= */
 document.addEventListener('click', e=>{
-  if(e.target.closest('[data-stop]')) return;
   const el = e.target.closest('[data-action]');
   if(!el) return;
+  // Painéis [data-stop] (modais): executa ações internas, mas cliques no
+  // corpo do painel não devem "vazar" para a ação de um ancestral (ex.: fechar).
+  const stopper = e.target.closest('[data-stop]');
+  if(stopper && !stopper.contains(el)) return;
   const fn = ACTIONS[el.dataset.action];
   if(fn){ e.preventDefault(); fn(el); }
 });
