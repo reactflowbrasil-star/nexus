@@ -1379,6 +1379,7 @@ Views.conversas = function(){
       <button class="btn btn-primary btn-sm" data-action="new-chat"><span data-ic="plus" data-size="13" style="color:#fff"></span>Nova conversa</button>
     </div>
   </div>
+  ${state.integration.evolution.connected && !inboxSync.relayOk ? '<div class="card" style="padding:10px 14px;margin-bottom:12px;border-color:#FDE68A;background:#FFFBEB;display:flex;gap:10px;align-items:center"><span>'+icon('info',14,'#B45309')+'</span><div class="small" style="color:#92400E"><b>Recebimento de mensagens:</b> para receber as respostas dos clientes em tempo real, aponte o webhook do Evolution GO (evento MESSAGES_UPSERT) para um relay e cole a URL em Integrações → Evolution GO → Config. Envio e sincronização de contatos já funcionam.</div></div>' : ''}
   <div class="chat-layout">
     <div class="cl-list">
       <div class="cl-search">
@@ -1601,14 +1602,26 @@ async function syncEvolutionInbox(){
 
 /* Recebimento: o backend Go não expõe histórico via REST — mensagens chegam
    via webhook do Evolution GO para o relay (api/whatsapp-relay.py). */
-function relayUrl(){ return localStorage.getItem('nexus.evolution.relayUrl') || '/api/whatsapp-relay.py'; }
+function relayUrl(){ return localStorage.getItem('nexus.evolution.relayUrl') || ''; }
+inboxSync.relayOk = null;
+async function checkRelay(){
+  const url = relayUrl();
+  if(!url){ inboxSync.relayOk = false; return; }
+  try{
+    const r = await fetch(url, {headers:{'Accept':'application/json'}});
+    const d = await r.json().catch(()=>null);
+    inboxSync.relayOk = !!(d && (d.messages || d.data));
+  }catch(e){ inboxSync.relayOk = false; }
+}
 async function pollRelay(){
   const url = relayUrl();
   if(!url) return;
   try{
     const r = await fetch(url, {headers:{'Accept':'application/json'}});
-    if(!r.ok) return;
-    const d = await r.json().catch(()=>({}));
+    if(!r.ok){ inboxSync.relayOk = false; return; }
+    const d = await r.json().catch(()=>null);
+    if(!d || !(d.messages||d.data)){ return; }
+    inboxSync.relayOk = true;
     const msgs = d.messages || d.data || [];
     if(!msgs.length) return;
     let changed = false;
