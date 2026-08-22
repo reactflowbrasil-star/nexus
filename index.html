@@ -700,12 +700,12 @@ async function evolutionRequest(path, options={}){
 
 function evolutionConfigModal(){
   const c=state.integration.evolution;
-  openModal('<div class="m-head"><h3>Evolution GO</h3><div class="grow"></div><button class="icon-btn" data-action="close-modal"><span data-ic="x" data-size="14"></span></button></div>'+\
-    '<div class="m-body"><div class="small muted mb12">Conecte o gateway WhatsApp ao Nexus. A chave fica somente neste navegador.</div>'+\
-    '<div class="field"><span class="f-label">URL da API</span><input class="f-input" id="evo-url" value="'+esc(c.baseUrl)+'"></div>'+\
-    '<div class="field mt12"><span class="f-label">API key</span><input class="f-input" id="evo-key" type="password" value="'+esc(c.apiKey)+'" placeholder="GLOBAL_API_KEY"></div>'+\
-    '<div class="field mt12"><span class="f-label">Instância padrão</span><input class="f-input" id="evo-instance" value="'+esc(c.instance)+'"></div>'+\
-    '<div class="flex mt16" style="gap:8px"><button class="btn btn-soft btn-sm" data-action="evo-test">Testar conexão</button><span id="evo-result" class="small muted"></span></div></div>'+\
+  openModal('<div class="m-head"><h3>Evolution GO</h3><div class="grow"></div><button class="icon-btn" data-action="close-modal"><span data-ic="x" data-size="14"></span></button></div>'+ 
+    '<div class="m-body"><div class="small muted mb12">Conecte o gateway WhatsApp ao Nexus. A chave fica somente neste navegador.</div>'+ 
+    '<div class="field"><span class="f-label">URL da API</span><input class="f-input" id="evo-url" value="'+esc(c.baseUrl)+'"></div>'+ 
+    '<div class="field mt12"><span class="f-label">API key</span><input class="f-input" id="evo-key" type="password" value="'+esc(c.apiKey)+'" placeholder="GLOBAL_API_KEY"></div>'+ 
+    '<div class="field mt12"><span class="f-label">Instância padrão</span><input class="f-input" id="evo-instance" value="'+esc(c.instance)+'"></div>'+ 
+    '<div class="flex mt16" style="gap:8px"><button class="btn btn-soft btn-sm" data-action="evo-test">Testar conexão</button><span id="evo-result" class="small muted"></span></div></div>'+ 
     '<div class="m-foot"><button class="btn btn-ghost btn-sm" data-action="close-modal">Cancelar</button><button class="btn btn-primary btn-sm" data-action="save-evo">Salvar integração</button></div>');
 }
 
