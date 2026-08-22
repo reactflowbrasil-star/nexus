@@ -40,6 +40,20 @@ services:
       retries: 5
       start_period: 60s
 
+  # Nexus Relay — recebe webhooks do Evolution GO (WEBHOOK_URL) e serve
+  # as mensagens para o inbox do Nexus CRM (GET :9090/messages).
+  nexus-relay:
+    image: python:3.12-alpine
+    container_name: nexus-relay
+    restart: unless-stopped
+    command: python -u /app/relay.py
+    volumes:
+      - ./nexus-relay/relay.py:/app/relay.py:ro
+    ports:
+      - "${RELAY_PORT:-9090}:9090"
+    networks:
+      - evolution_network
+
   postgres:
     image: postgres:15-alpine
     container_name: evolution-postgres
