@@ -1,6 +1,8 @@
-FROM evoapicloud/evolution-go:0.7.2
+FROM nginx:1.27-alpine
 
-ENV SERVER_PORT=8080 \
-    TZ=America/Sao_Paulo
+ENV TZ=America/Sao_Paulo
+
+COPY index.html /usr/share/nginx/html/index.html
+COPY nexus-nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 8080
