@@ -1,0 +1,2292 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nexus CRM — Plataforma de CRM e Automação Omnichannel</title>
+<style>
+:root{
+  --bg:#F3F4FA; --card:#FFFFFF; --border:#E4E6F1; --border-2:#D6D9E8;
+  --text:#13173A; --muted:#6B7189; --faint:#9AA0B8;
+  --accent:#6D5DF6; --accent-dark:#5A48E8; --accent-soft:#EFEDFE;
+  --violet:#8B5CF6; --blue:#2563EB; --cyan:#0EA5E9; --green:#16A34A;
+  --wa:#25D366; --amber:#D97706; --orange:#EA580C; --red:#DC2626; --pink:#E1306C;
+  --sidebar:#12152E; --sidebar-2:#1A1E3F;
+  --r:14px; --r-sm:9px;
+  --shadow:0 1px 2px rgba(19,23,58,.06),0 10px 30px -14px rgba(19,23,58,.16);
+  --shadow-lg:0 4px 12px rgba(19,23,58,.10),0 24px 60px -20px rgba(19,23,58,.28);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;font:13.5px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;color:var(--text);background:var(--bg);-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:#C9CDE0;border-radius:8px;border:2px solid transparent;background-clip:content-box}
+::-webkit-scrollbar-track{background:transparent}
+button{font:inherit;cursor:pointer}
+input,select,textarea{font:inherit;color:inherit}
+h1,h2,h3,h4{margin:0;font-weight:700;letter-spacing:-.01em}
+svg{display:block;flex-shrink:0}
+
+/* ============ LAYOUT ============ */
+#app{display:flex;height:100vh;overflow:hidden}
+#sidebar{width:238px;flex-shrink:0;background:linear-gradient(180deg,#151838 0%,#10122B 100%);color:#9AA0C8;display:flex;flex-direction:column;border-right:1px solid rgba(255,255,255,.05)}
+#main{flex:1;display:flex;flex-direction:column;min-width:0}
+#content{flex:1;overflow-y:auto;padding:22px 26px 60px}
+.logo{display:flex;align-items:center;gap:10px;padding:18px 18px 14px}
+.logo-mark{width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,#8B5CF6,#6D5DF6 55%,#3B82F6);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:15px;box-shadow:0 4px 14px rgba(109,93,246,.45)}
+.logo-name{color:#fff;font-weight:700;font-size:15.5px;letter-spacing:-.01em}
+.logo-name small{display:block;font-size:10px;font-weight:600;color:#6E75A3;letter-spacing:.14em;text-transform:uppercase}
+.side-scroll{flex:1;overflow-y:auto;padding:4px 10px 12px}
+.side-scroll::-webkit-scrollbar-thumb{background:#2A2F5C}
+.nav-group{margin-top:14px}
+.nav-label{font-size:10px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:#5C6394;padding:0 10px;margin-bottom:5px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:7.5px 10px;border-radius:9px;color:#A6ABD1;font-weight:500;font-size:13px;cursor:pointer;position:relative;margin-bottom:1px;border:1px solid transparent;transition:background .12s,color .12s}
+.nav-item:hover{background:rgba(255,255,255,.05);color:#E7E9FB}
+.nav-item.active{background:linear-gradient(90deg,rgba(109,93,246,.28),rgba(109,93,246,.12));color:#fff;border-color:rgba(139,92,246,.35)}
+.nav-item.active::before{content:"";position:absolute;left:-10px;top:6px;bottom:6px;width:3px;border-radius:0 3px 3px 0;background:linear-gradient(180deg,#8B5CF6,#6D5DF6)}
+.nav-item .ico{margin-right:1px}
+.nav-badge{margin-left:auto;font-size:10px;font-weight:700;background:rgba(109,93,246,.9);color:#fff;padding:1px 7px;border-radius:20px}
+.nav-badge.gray{background:#2A2F5C;color:#A6ABD1}
+.side-foot{border-top:1px solid rgba(255,255,255,.06);padding:12px}
+.user-card{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:11px;background:rgba(255,255,255,.05);cursor:pointer}
+.user-card:hover{background:rgba(255,255,255,.09)}
+.user-card .uc-name{color:#fff;font-weight:600;font-size:12.5px;line-height:1.2}
+.user-card .uc-role{font-size:11px;color:#7C82AE}
+
+/* ============ TOPBAR ============ */
+#topbar{height:56px;flex-shrink:0;background:var(--card);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px;padding:0 26px}
+.tb-title{font-weight:700;font-size:14.5px}
+.tenant-chip{display:flex;align-items:center;gap:7px;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:5px 10px;font-size:12.5px;font-weight:600;cursor:pointer}
+.tenant-chip:hover{border-color:var(--border-2)}
+.tb-search{flex:1;max-width:400px;display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:6.5px 11px;color:var(--faint)}
+.tb-search input{border:none;outline:none;background:transparent;flex:1;font-size:13px;color:var(--text)}
+.tb-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.icon-btn{width:32px;height:32px;border-radius:9px;border:1px solid var(--border);background:var(--card);color:var(--muted);display:flex;align-items:center;justify-content:center;position:relative;transition:.12s}
+.icon-btn:hover{border-color:var(--border-2);color:var(--text);background:var(--bg)}
+.icon-btn .dot{position:absolute;top:6px;right:7px;width:7px;height:7px;border-radius:50%;background:var(--red);border:2px solid #fff}
+
+/* ============ PAGE HEADER ============ */
+.page-head{display:flex;align-items:flex-start;gap:16px;margin-bottom:18px}
+.ph-title{font-size:19px;font-weight:800;letter-spacing:-.02em}
+.ph-sub{font-size:12.5px;color:var(--muted);margin-top:2px}
+.ph-actions{margin-left:auto;display:flex;gap:8px;align-items:center}
+
+/* ============ BUTTONS ============ */
+.btn{display:inline-flex;align-items:center;gap:7px;border-radius:9px;border:1px solid transparent;padding:7.5px 13px;font-size:12.8px;font-weight:600;transition:.12s;white-space:nowrap}
+.btn:active{transform:translateY(.5px)}
+.btn-primary{background:linear-gradient(135deg,#7B6BF8,#5A48E8);color:#fff;box-shadow:0 3px 10px -2px rgba(109,93,246,.5)}
+.btn-primary:hover{filter:brightness(1.07)}
+.btn-soft{background:var(--accent-soft);color:var(--accent-dark)}
+.btn-soft:hover{background:#E5E2FD}
+.btn-ghost{background:var(--card);border-color:var(--border);color:var(--text)}
+.btn-ghost:hover{border-color:var(--border-2);background:var(--bg)}
+.btn-danger{background:#FEEBEB;color:var(--red)}
+.btn-danger:hover{background:#FBDDDD}
+.btn-success{background:#E7F6EC;color:var(--green)}
+.btn-sm{padding:5px 10px;font-size:12px;border-radius:8px}
+.btn-icon{padding:6px;width:32px;height:32px;justify-content:center}
+.btn[disabled]{opacity:.55;cursor:not-allowed}
+
+/* ============ CARDS / GRID ============ */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow)}
+.card-h{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border)}
+.card-h h3{font-size:13.5px;font-weight:700}
+.card-h .sub{font-size:11.5px;color:var(--muted)}
+.card-b{padding:16px}
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+.g5{grid-template-columns:repeat(5,1fr)}
+.g-2-1{grid-template-columns:2fr 1fr}
+.g-1-2{grid-template-columns:1fr 2fr}
+.g-3-1{grid-template-columns:3fr 1fr}
+.mt8{margin-top:8px}.mt12{margin-top:12px}.mt16{margin-top:16px}.mt20{margin-top:20px}
+.mb8{margin-bottom:8px}.mb12{margin-bottom:12px}.mb16{margin-bottom:16px}
+.flex{display:flex;align-items:center;gap:8px}
+.between{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.center{display:flex;align-items:center;justify-content:center}
+.grow{flex:1;min-width:0}
+.muted{color:var(--muted)}
+.small{font-size:11.5px}
+.tiny{font-size:10.5px}
+.bold{font-weight:700}
+.right{text-align:right}
+.ellipsis{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ============ KPI ============ */
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:15px 16px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:2px}
+.kpi-top{display:flex;align-items:center;gap:10px}
+.kpi-icon{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center}
+.kpi-label{font-size:11.5px;font-weight:600;color:var(--muted);letter-spacing:.02em}
+.kpi-value{font-size:21px;font-weight:800;letter-spacing:-.02em}
+.kpi-delta{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;border-radius:20px;padding:2px 8px}
+.d-up{background:#E7F6EC;color:var(--green)}
+.d-down{background:#FEEBEB;color:var(--red)}
+
+/* ============ TAGS / BADGES ============ */
+.tag{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:700;padding:2.5px 8px;border-radius:20px;white-space:nowrap}
+.tag-purple{background:#EFEDFE;color:#6D28D9}
+.tag-blue{background:#E8EFFE;color:#1D4ED8}
+.tag-green{background:#E7F6EC;color:#15803D}
+.tag-amber{background:#FEF3E2;color:#B45309}
+.tag-red{background:#FEEBEB;color:#B91C1C}
+.tag-gray{background:#EEF0F6;color:#4B5570}
+.tag-wa{background:#E4F8EC;color:#0E8A3E}
+.tag-pink{background:#FDE8F1;color:#BE185D}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px}
+.b-green{background:#E7F6EC;color:#15803D}
+.b-amber{background:#FEF3E2;color:#B45309}
+.b-red{background:#FEEBEB;color:#B91C1C}
+.b-gray{background:#EEF0F6;color:#4B5570}
+.b-blue{background:#E8EFFE;color:#1D4ED8}
+.b-violet{background:#EFEDFE;color:#6D28D9}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3.5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--muted);cursor:pointer;user-select:none}
+.chip:hover{border-color:var(--border-2);color:var(--text)}
+.chip.on{background:var(--accent-soft);border-color:rgba(109,93,246,.4);color:var(--accent-dark)}
+
+/* ============ AVATAR ============ */
+.av{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;color:#fff;font-weight:700;flex-shrink:0;letter-spacing:0}
+.av-28{width:28px;height:28px;font-size:10.5px}
+.av-32{width:32px;height:32px;font-size:11.5px}
+.av-40{width:40px;height:40px;font-size:13.5px}
+.av-48{width:48px;height:48px;font-size:15.5px}
+.av-56{width:56px;height:56px;font-size:18px}
+.av .st{position:relative}
+
+/* ============ TABLE ============ */
+.tbl-wrap{overflow-x:auto}
+table.tbl{width:100%;border-collapse:collapse;font-size:12.8px}
+.tbl th{text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);padding:10px 12px;border-bottom:1px solid var(--border);white-space:nowrap;background:#FAFAFE}
+.tbl td{padding:11px 12px;border-bottom:1px solid #EEF0F7;vertical-align:middle}
+.tbl tbody tr{cursor:pointer;transition:background .1s}
+.tbl tbody tr:hover{background:#F8F8FE}
+.tbl tbody tr:last-child td{border-bottom:none}
+.cell-name{display:flex;align-items:center;gap:10px;min-width:0}
+.cell-name .cn-t{font-weight:600;font-size:12.8px;line-height:1.25}
+.cell-name .cn-s{font-size:11px;color:var(--muted)}
+
+/* ============ SCORE RING ============ */
+.score-ring{position:relative;display:inline-flex}
+.score-ring svg{transform:rotate(-90deg)}
+.score-ring .sr-v{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:8.5px;font-weight:800}
+
+/* ============ PROGRESS ============ */
+.prog{height:7px;border-radius:6px;background:#EDEFF7;overflow:hidden}
+.prog-fill{height:100%;border-radius:6px;background:linear-gradient(90deg,#8B5CF6,#6D5DF6)}
+.prog-fill.green{background:linear-gradient(90deg,#34D399,#16A34A)}
+.prog-fill.blue{background:linear-gradient(90deg,#60A5FA,#2563EB)}
+.prog-fill.amber{background:linear-gradient(90deg,#FBBF24,#D97706)}
+.prog-fill.red{background:linear-gradient(90deg,#F87171,#DC2626)}
+
+/* ============ SWITCH ============ */
+.switch{position:relative;width:36px;height:20px;flex-shrink:0;cursor:pointer}
+.switch input{opacity:0;width:0;height:0}
+.switch .sl{position:absolute;inset:0;background:#D3D6E6;border-radius:20px;transition:.15s}
+.switch .sl::before{content:"";position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:2px;left:2px;transition:.15s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.switch input:checked + .sl{background:var(--accent)}
+.switch input:checked + .sl::before{transform:translateX(16px)}
+
+/* ============ TABS ============ */
+.tabs{display:flex;gap:2px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:3px;width:max-content}
+.tab{padding:6px 14px;border-radius:8px;font-size:12.3px;font-weight:600;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:7px;white-space:nowrap}
+.tab:hover{color:var(--text)}
+.tab.active{background:var(--card);color:var(--text);box-shadow:0 1px 3px rgba(19,23,58,.12)}
+
+/* ============ KANBAN ============ */
+.kanban{display:flex;gap:14px;align-items:flex-start;overflow-x:auto;padding-bottom:8px}
+.kb-col{width:264px;min-width:264px;background:#F8F9FD;border:1px solid var(--border);border-radius:12px;display:flex;flex-direction:column;max-height:calc(100vh - 250px)}
+.kb-head{display:flex;align-items:center;gap:8px;padding:11px 12px 9px;border-bottom:1px solid var(--border)}
+.kb-dot{width:9px;height:9px;border-radius:3px}
+.kb-head .kb-name{font-weight:700;font-size:12.8px}
+.kb-head .kb-count{font-size:10.5px;font-weight:700;color:var(--faint);background:#ECEEF6;border-radius:20px;padding:1.5px 7px}
+.kb-head .kb-sum{margin-left:auto;font-size:11.5px;font-weight:700;color:var(--muted)}
+.kb-cards{flex:1;overflow-y:auto;padding:9px;display:flex;flex-direction:column;gap:8px;min-height:70px}
+.kb-col.drag-over{outline:2px dashed var(--accent);outline-offset:-2px;background:#F5F4FF}
+.kb-card{background:var(--card);border:1px solid var(--border);border-radius:11px;padding:10px 11px;cursor:grab;box-shadow:0 1px 2px rgba(19,23,58,.05);transition:.12s;user-select:none}
+.kb-card:hover{box-shadow:var(--shadow);border-color:var(--border-2);transform:translateY(-1px)}
+.kb-card.dragging{opacity:.45;transform:rotate(1.5deg) scale(.98)}
+.kb-card .kc-top{display:flex;align-items:center;gap:8px}
+.kb-card .kc-name{font-weight:700;font-size:12.6px;line-height:1.3}
+.kb-card .kc-val{margin-left:auto;font-weight:800;font-size:12.6px;white-space:nowrap}
+.kb-card .kc-co{font-size:11px;color:var(--muted);margin-top:2px}
+.kb-card .kc-bot{display:flex;align-items:center;gap:6px;margin-top:9px}
+.kb-add{display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;margin:0 9px 9px;border-radius:9px;border:1px dashed var(--border-2);color:var(--muted);font-size:12px;font-weight:600;cursor:pointer}
+.kb-add:hover{color:var(--accent-dark);border-color:var(--accent);background:var(--accent-soft)}
+
+/* ============ CHAT ============ */
+.chat-layout{display:grid;grid-template-columns:300px 1fr;height:calc(100vh - 190px);min-height:480px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
+.cl-list{border-right:1px solid var(--border);display:flex;flex-direction:column;min-height:0}
+.cl-search{padding:11px;border-bottom:1px solid var(--border)}
+.cl-items{flex:1;overflow-y:auto}
+.cl-item{display:flex;gap:10px;padding:10.5px 12px;cursor:pointer;border-bottom:1px solid #F1F2F8;position:relative}
+.cl-item:hover{background:#F8F8FE}
+.cl-item.active{background:var(--accent-soft)}
+.cl-item .cli-mid{flex:1;min-width:0}
+.cl-item .cli-name{font-weight:700;font-size:12.8px;display:flex;align-items:center;gap:6px}
+.cl-item .cli-prev{font-size:11.8px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.cl-item .cli-time{font-size:10.5px;color:var(--faint);white-space:nowrap}
+.cl-item .cli-chan{position:absolute;top:10px;right:10px}
+.cl-msg{display:flex;gap:9px;padding:8px 0;border-bottom:1px solid #F1F2F8}
+.cl-msg .cm-ico{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.cl-msg .cm-t{font-weight:600;font-size:12.6px}
+.cl-msg .cm-s{font-size:11.5px;color:var(--muted);margin-top:1px}
+.cl-msg .cm-time{margin-left:auto;font-size:10.5px;color:var(--faint);white-space:nowrap}
+.chat-main{display:flex;flex-direction:column;min-height:0;background:#FDFDFF}
+.chat-head{display:flex;align-items:center;gap:11px;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--card)}
+.chat-head .ch-title{font-weight:700;font-size:13.5px}
+.chat-head .ch-sub{font-size:11.5px;color:var(--muted);display:flex;align-items:center;gap:5px}
+.chat-body{flex:1;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:10px}
+.date-sep{align-self:center;font-size:10.5px;font-weight:700;color:var(--faint);background:#EDEFF7;padding:2.5px 11px;border-radius:20px;margin:4px 0}
+.bubble{max-width:68%;padding:8.5px 12px;border-radius:13px;font-size:12.9px;line-height:1.5;position:relative;word-wrap:break-word;box-shadow:0 1px 2px rgba(19,23,58,.06)}
+.b-in{align-self:flex-start;background:#F0F1F8;border-bottom-left-radius:4px}
+.b-out{align-self:flex-end;background:linear-gradient(135deg,#7B6BF8,#5A48E8);color:#fff;border-bottom-right-radius:4px}
+.b-ai{align-self:flex-start;background:#F3F0FF;border:1px solid #E4DFFF;border-bottom-left-radius:4px}
+.b-ai .b-ai-tag{display:inline-flex;align-items:center;gap:4px;font-size:9.5px;font-weight:800;color:#6D28D9;background:#E9E3FF;border-radius:5px;padding:1px 6px;margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em}
+.b-meta{display:flex;align-items:center;gap:4px;margin-top:4px;font-size:10px;opacity:.65}
+.b-in .b-meta{color:var(--muted)}
+.b-out .b-meta{color:rgba(255,255,255,.75)}
+.typing{display:inline-flex;gap:4px;padding:10px 14px;background:#F0F1F8;border-radius:13px;border-bottom-left-radius:4px;align-self:flex-start}
+.typing i{width:6px;height:6px;border-radius:50%;background:#9AA0B8;animation:blink 1.2s infinite}
+.typing i:nth-child(2){animation-delay:.2s}
+.typing i:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,60%,100%{opacity:.25;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
+.quick-replies{display:flex;gap:7px;padding:8px 16px 4px;flex-wrap:wrap}
+.qr{font-size:11.5px;font-weight:600;color:var(--accent-dark);background:var(--accent-soft);border:1px solid rgba(109,93,246,.3);border-radius:16px;padding:4.5px 12px;cursor:pointer}
+.qr:hover{background:#E5E2FD}
+.composer{display:flex;align-items:center;gap:9px;padding:11px 14px;border-top:1px solid var(--border);background:var(--card)}
+.composer input{flex:1;border:1px solid var(--border);background:var(--bg);border-radius:21px;padding:9px 15px;outline:none;font-size:13px}
+.composer input:focus{border-color:var(--accent);background:#fff}
+.ai-pill{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#F3F0FF,#E9E3FF);border:1px solid #DDD4FF;color:#5B21B6;font-weight:800;font-size:11px;padding:4px 11px;border-radius:20px;letter-spacing:.02em}
+.human-pill{display:inline-flex;align-items:center;gap:6px;background:#E7F6EC;border:1px solid #BEE8CD;color:#15803D;font-weight:800;font-size:11px;padding:4px 11px;border-radius:20px;letter-spacing:.02em}
+
+/* ============ DRAWER ============ */
+.drawer-overlay{position:fixed;inset:0;background:rgba(16,18,43,.44);z-index:60;animation:fadeIn .15s}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.drawer-panel{position:fixed;top:0;right:0;bottom:0;width:460px;max-width:94vw;background:var(--card);z-index:61;box-shadow:var(--shadow-lg);display:flex;flex-direction:column;animation:slideIn .18s ease-out}
+@keyframes slideIn{from{transform:translateX(40px);opacity:0}to{transform:translateX(0);opacity:1}}
+.dp-head{padding:18px 18px 14px;border-bottom:1px solid var(--border)}
+.dp-scroll{flex:1;overflow-y:auto;padding:16px 18px 30px}
+.dp-close{position:absolute;top:14px;right:14px}
+.drawer-tabs{display:flex;gap:2px;border-bottom:1px solid var(--border);margin:14px -18px 0;padding:0 14px}
+.dt{flex:1;text-align:center;padding:9px 6px;font-size:12.3px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+.dt.active{color:var(--accent-dark);border-color:var(--accent)}
+.field{display:flex;flex-direction:column;gap:4px}
+.f-label{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--faint)}
+.f-value{font-size:12.8px;font-weight:600}
+
+/* ============ TIMELINE ============ */
+.tl{display:flex;flex-direction:column}
+.tl-item{display:flex;gap:11px;position:relative;padding-bottom:15px}
+.tl-item:last-child{padding-bottom:0}
+.tl-item::before{content:"";position:absolute;left:13px;top:28px;bottom:0;width:2px;background:#EAECF6}
+.tl-item:last-child::before{display:none}
+.tl-ico{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;z-index:1}
+.tl-t{font-size:12.6px;font-weight:600;line-height:1.35}
+.tl-s{font-size:11px;color:var(--muted);margin-top:1px}
+
+/* ============ MODAL ============ */
+.modal-overlay{position:fixed;inset:0;background:rgba(16,18,43,.5);z-index:70;display:flex;align-items:center;justify-content:center;animation:fadeIn .15s;padding:20px}
+.modal{background:var(--card);border-radius:16px;box-shadow:var(--shadow-lg);width:540px;max-width:96vw;max-height:92vh;display:flex;flex-direction:column;animation:popIn .16s ease-out}
+@keyframes popIn{from{transform:scale(.96) translateY(8px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
+.m-head{display:flex;align-items:center;padding:16px 18px;border-bottom:1px solid var(--border)}
+.m-head h3{font-size:14.5px}
+.m-body{padding:18px;overflow-y:auto}
+.m-foot{display:flex;justify-content:flex-end;gap:8px;padding:13px 18px;border-top:1px solid var(--border);background:#FAFAFE;border-radius:0 0 16px 16px}
+
+/* ============ FORMS ============ */
+.f-input,.f-select,.f-textarea{width:100%;border:1px solid var(--border);border-radius:9px;padding:8.5px 11px;background:var(--card);outline:none;font-size:12.8px;transition:.12s}
+.f-input:focus,.f-select:focus,.f-textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(109,93,246,.14)}
+.f-textarea{resize:vertical;min-height:90px;line-height:1.5}
+.f-hint{font-size:11px;color:var(--faint)}
+.f-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.check-row{display:flex;align-items:center;gap:9px;padding:7px 10px;border:1px solid var(--border);border-radius:9px;cursor:pointer;font-size:12.5px;font-weight:600;user-select:none}
+.check-row:hover{border-color:var(--border-2)}
+.check-row.on{border-color:rgba(109,93,246,.45);background:var(--accent-soft);color:var(--accent-dark)}
+.check-row input{accent-color:var(--accent)}
+
+/* ============ TOAST ============ */
+.toasts{position:fixed;bottom:20px;right:20px;z-index:90;display:flex;flex-direction:column;gap:9px}
+.toast{background:#1B1F3D;color:#E7E9FB;border-radius:12px;padding:11px 15px;font-size:12.5px;box-shadow:var(--shadow-lg);display:flex;align-items:center;gap:10px;min-width:260px;max-width:400px;animation:slideUp .2s ease-out;border:1px solid rgba(255,255,255,.08)}
+@keyframes slideUp{from{transform:translateY(14px);opacity:0}to{transform:translateY(0);opacity:1}}
+.toast .t-ico{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.toast .t-t{font-weight:700;font-size:11.5px;letter-spacing:.03em;text-transform:uppercase}
+.toast .t-m{font-size:12px;color:#B9BEDF;line-height:1.4}
+.toast code{background:rgba(255,255,255,.1);padding:1px 5px;border-radius:5px;font-size:11px}
+
+/* ============ WORKFLOW ============ */
+.wf-layout{display:grid;grid-template-columns:218px 1fr 264px;gap:0;height:calc(100vh - 190px);min-height:520px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
+.wf-palette{border-right:1px solid var(--border);display:flex;flex-direction:column;min-height:0;background:#FAFAFE}
+.wf-pal-title{padding:13px 14px 8px;font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--faint)}
+.pal-group{padding:0 10px 4px}
+.pal-label{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);padding:8px 6px 4px}
+.pal-item{display:flex;align-items:center;gap:9px;padding:7.5px 9px;border-radius:9px;font-size:12.3px;font-weight:600;cursor:grab;border:1px solid transparent}
+.pal-item:hover{background:#F0F1F8;border-color:var(--border)}
+.pal-item:active{cursor:grabbing}
+.pi-ico{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.wf-canvas-wrap{overflow:auto;position:relative;background:
+  radial-gradient(circle,#E3E6F2 1px,transparent 1px);
+  background-size:22px 22px;background-color:#FBFBFE}
+.wf-canvas{position:relative;width:1020px;height:500px}
+.wf-node{position:absolute;width:186px;background:var(--card);border:1.5px solid var(--border-2);border-radius:11px;padding:9px 11px;cursor:pointer;box-shadow:0 2px 6px rgba(19,23,58,.08);z-index:2;transition:.12s}
+.wf-node:hover{box-shadow:var(--shadow);transform:translateY(-1px)}
+.wf-node.selected{border-color:var(--accent);box-shadow:0 0 0 3px rgba(109,93,246,.18)}
+.wf-node .wn-top{display:flex;align-items:center;gap:8px}
+.wf-node .wn-ico{width:27px;height:27px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.wf-node .wn-kind{font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+.wf-node .wn-name{font-size:12.3px;font-weight:700;line-height:1.25}
+.wf-node .wn-det{font-size:10.8px;color:var(--muted);margin-top:3px;line-height:1.35}
+.wn-trigger{border-color:#A7D8BC;background:#F4FBF7}
+.wn-action{border-color:#B8CDFB;background:#F5F8FF}
+.wn-condition{border-color:#F5CF8F;background:#FFFAF0}
+.wn-delay{border-color:#C9CDE0;background:#F8F9FC}
+.wn-ai{border-color:#D2C4FD;background:#F8F6FF}
+.wf-edge{position:absolute;inset:0;pointer-events:none;z-index:1}
+.wf-edge path{fill:none;stroke:#A9AFCB;stroke-width:1.8}
+.wf-edge .edge-on{stroke:#10B981}
+.wf-edge .edge-off{stroke:#EF4444}
+.edge-label{font-size:9.5px;font-weight:800;fill:#6B7189}
+.wf-inspector{border-left:1px solid var(--border);display:flex;flex-direction:column;min-height:0;background:#FAFAFE}
+.wf-wf-tabs{display:flex;gap:2px;padding:10px;border-bottom:1px solid var(--border);overflow-x:auto}
+.wf-wf-tab{flex:1;min-width:0;padding:7px 9px;border-radius:8px;font-size:11.3px;font-weight:700;color:var(--muted);cursor:pointer;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border:1px solid transparent}
+.wf-wf-tab:hover{background:#F0F1F8}
+.wf-wf-tab.active{background:var(--accent-soft);color:var(--accent-dark);border-color:rgba(109,93,246,.35)}
+.wf-insp-body{flex:1;overflow-y:auto;padding:14px}
+.wf-insp-empty{color:var(--faint);font-size:12px;text-align:center;padding:30px 10px;line-height:1.6}
+.wf-foot{padding:10px 12px;border-top:1px solid var(--border);display:flex;gap:7px;align-items:center;background:var(--card)}
+
+/* ============ AGENTS ============ */
+.agent-card{padding:16px;display:flex;flex-direction:column;gap:10px}
+.agent-top{display:flex;align-items:center;gap:11px}
+.agent-ico{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center}
+.agent-name{font-weight:700;font-size:13.5px}
+.agent-desc{font-size:12px;color:var(--muted);line-height:1.5}
+.agent-tools{display:flex;flex-wrap:wrap;gap:5px}
+.tool-chip{display:inline-flex;align-items:center;gap:5px;font-size:10.8px;font-weight:700;background:#EEF0F6;color:#4B5570;border-radius:7px;padding:3.5px 8px}
+.agent-foot{display:flex;gap:8px;margin-top:auto}
+.agent-stats{display:flex;gap:0;border:1px solid var(--border);border-radius:11px;overflow:hidden;text-align:center}
+.agent-stats .as{flex:1;padding:10px 6px;border-right:1px solid var(--border)}
+.agent-stats .as:last-child{border-right:none}
+.agent-stats .as-v{font-weight:800;font-size:15px}
+.agent-stats .as-l{font-size:10px;color:var(--muted);font-weight:600;letter-spacing:.03em;text-transform:uppercase}
+
+/* ============ CALENDAR ============ */
+.cal-layout{display:grid;grid-template-columns:1fr 292px;gap:14px}
+.cal-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
+.cal-head{display:flex;align-items:center;gap:8px;padding:11px 14px;border-bottom:1px solid var(--border);background:#FAFAFE}
+.cal-grid{display:grid;grid-template-columns:58px repeat(6,1fr)}
+.cal-hour-label{font-size:10px;font-weight:700;color:var(--faint);text-align:right;padding:8px 8px 0 0;height:46px}
+.cal-slot{height:46px;border-right:1px solid #F0F1F7;border-bottom:1px solid #F0F1F7;position:relative;cursor:pointer}
+.cal-slot:hover{background:#F6F5FF}
+.cal-slot.today{background:#FAF9FF}
+.cal-day-head{padding:9px 4px;text-align:center;border-right:1px solid #F0F1F7;border-bottom:1px solid var(--border);background:#FAFAFE}
+.cal-day-head .cd-w{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.cal-day-head .cd-d{font-size:15px;font-weight:800;margin-top:1px}
+.cal-day-head.today .cd-d{color:var(--accent-dark)}
+.cal-appt{position:absolute;left:3px;right:3px;border-radius:7px;padding:4px 8px;font-size:10.8px;font-weight:700;color:#fff;cursor:pointer;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;box-shadow:0 1px 3px rgba(19,23,58,.2)}
+.cal-appt .ca-t{opacity:.85;font-weight:600;font-size:10px}
+
+/* ============ MISC VIEWS ============ */
+.int-card{padding:15px;display:flex;flex-direction:column;gap:9px}
+.int-logo{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;color:#fff}
+.int-name{font-weight:700;font-size:13px}
+.int-desc{font-size:11.5px;color:var(--muted);line-height:1.45}
+.seg-row{display:flex;align-items:center;gap:11px;padding:12px 14px;border-bottom:1px solid #EEF0F7}
+.seg-row:last-child{border-bottom:none}
+.seg-row:hover{background:#FAFAFE}
+.funnel-step{display:flex;align-items:center;gap:12px;padding:7px 0}
+.funnel-bar{height:30px;border-radius:8px;display:flex;align-items:center;padding:0 12px;font-size:11.5px;font-weight:700;color:#fff;white-space:nowrap}
+.health-row{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #EEF0F7}
+.health-row:last-child{border-bottom:none}
+.pulse{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.pulse.ok{background:#22C55E;box-shadow:0 0 0 3px rgba(34,197,94,.18)}
+.pulse.warn{background:#F59E0B;box-shadow:0 0 0 3px rgba(245,158,11,.18)}
+.pulse.err{background:#EF4444;box-shadow:0 0 0 3px rgba(239,68,68,.18)}
+
+/* event log */
+.evlog{display:flex;flex-direction:column}
+.ev-item{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid #F1F2F8;font-size:12.2px;align-items:flex-start}
+.ev-item:last-child{border-bottom:none}
+.ev-ico{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.ev-t{font-weight:600}
+.ev-m{color:var(--muted);font-size:11.8px;margin-top:1px}
+.ev-time{font-size:10.5px;color:var(--faint);white-space:nowrap}
+
+.chart-tip{font-size:11px;color:var(--faint);font-weight:600}
+.legend{display:flex;gap:14px;flex-wrap:wrap}
+.legend .lg{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted);font-weight:600}
+.legend .lg i{width:9px;height:9px;border-radius:3px;display:inline-block}
+
+.empty-state{padding:44px 20px;text-align:center;color:var(--faint)}
+.empty-state .es-ico{width:56px;height:56px;border-radius:16px;background:#EEF0F6;display:flex;align-items:center;justify-content:center;margin:0 auto 12px}
+.empty-state .es-t{font-weight:700;font-size:13.5px;color:var(--muted)}
+.empty-state .es-s{font-size:12px;margin-top:3px}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside id="sidebar">
+    <div class="logo">
+      <div class="logo-mark">N</div>
+      <div class="logo-name">Nexus CRM<small>Omnichannel Platform</small></div>
+    </div>
+    <div class="side-scroll">
+      <div class="nav-group">
+        <div class="nav-label">Geral</div>
+        <div class="nav-item" data-nav="dashboard">
+          <span class="ico" data-ic="dashboard"></span>Dashboard
+        </div>
+        <div class="nav-item" data-nav="conversas">
+          <span class="ico" data-ic="message"></span>Conversas
+          <span class="nav-badge">12</span>
+        </div>
+        <div class="nav-item" data-nav="pipeline">
+          <span class="ico" data-ic="columns"></span>Pipeline
+        </div>
+      </div>
+      <div class="nav-group">
+        <div class="nav-label">CRM</div>
+        <div class="nav-item" data-nav="contatos">
+          <span class="ico" data-ic="users"></span>Contatos
+        </div>
+        <div class="nav-item" data-nav="segmentos">
+          <span class="ico" data-ic="filter"></span>Segmentos
+        </div>
+        <div class="nav-item" data-nav="empresas">
+          <span class="ico" data-ic="building"></span>Empresas
+        </div>
+      </div>
+      <div class="nav-group">
+        <div class="nav-label">Automação</div>
+        <div class="nav-item" data-nav="workflows">
+          <span class="ico" data-ic="workflow"></span>Workflows
+          <span class="nav-badge gray">3</span>
+        </div>
+        <div class="nav-item" data-nav="campanhas">
+          <span class="ico" data-ic="megaphone"></span>Campanhas
+        </div>
+        <div class="nav-item" data-nav="agentes">
+          <span class="ico" data-ic="sparkles"></span>Agentes IA
+          <span class="nav-badge">2</span>
+        </div>
+        <div class="nav-item" data-nav="agenda">
+          <span class="ico" data-ic="calendar"></span>Agenda
+        </div>
+      </div>
+      <div class="nav-group">
+        <div class="nav-label">Conteúdo</div>
+        <div class="nav-item" data-nav="forms">
+          <span class="ico" data-ic="form"></span>Forms
+        </div>
+        <div class="nav-item" data-nav="landings">
+          <span class="ico" data-ic="layout"></span>Landing Pages
+        </div>
+        <div class="nav-item" data-nav="analytics">
+          <span class="ico" data-ic="chart"></span>Analytics
+        </div>
+      </div>
+      <div class="nav-group">
+        <div class="nav-label">Sistema</div>
+        <div class="nav-item" data-nav="integracoes">
+          <span class="ico" data-ic="plug"></span>Integrações
+        </div>
+        <div class="nav-item" data-nav="admin">
+          <span class="ico" data-ic="shield"></span>SaaS Admin
+        </div>
+      </div>
+    </div>
+    <div class="side-foot">
+      <div class="user-card">
+        <span class="av av-32" style="background:linear-gradient(135deg,#F59E0B,#EF4444)">CA</span>
+        <div class="grow">
+          <div class="uc-name">Carlos Andrade</div>
+          <div class="uc-role">Admin · Sua Agência</div>
+        </div>
+        <span class="ico" data-ic="chev"></span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <div id="main">
+    <header id="topbar">
+      <div class="tb-title" id="tb-title">Dashboard</div>
+      <div class="tenant-chip">
+        <span class="ico" data-ic="building" style="color:var(--accent)"></span>
+        Sua Agência
+        <span class="ico" data-ic="chev" style="width:12px;height:12px"></span>
+      </div>
+      <div class="tb-search">
+        <span class="ico" data-ic="search"></span>
+        <input type="text" placeholder="Buscar contatos, conversas, oportunidades... (Ctrl+K)">
+      </div>
+      <div class="tb-right">
+        <button class="icon-btn" title="Notificações"><span class="ico" data-ic="bell"></span><span class="dot"></span></button>
+        <button class="btn btn-primary btn-sm" data-action="quick-new"><span class="ico" data-ic="plus" style="color:#fff"></span>Novo</button>
+        <span class="av av-32" style="background:linear-gradient(135deg,#F59E0B,#EF4444)">CA</span>
+      </div>
+    </header>
+    <main id="content"></main>
+  </div>
+</div>
+
+<div id="drawer-root"></div>
+<div id="modal-root"></div>
+<div id="toast-root" class="toasts"></div>
+
+<script>
+'use strict';
+/* ================= ICONS ================= */
+const ICONS = {
+  dashboard:'<rect x="3" y="3" width="7.5" height="7.5" rx="1.8"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.8"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.8"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.8"/>',
+  users:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  columns:'<rect x="3" y="3" width="5.5" height="18" rx="1.6"/><rect x="9.3" y="3" width="5.5" height="13" rx="1.6"/><rect x="15.5" y="3" width="5.5" height="9" rx="1.6"/>',
+  message:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+  megaphone:'<path d="M3 11l18-6v13L3 12z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>',
+  workflow:'<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="12" r="3"/><path d="M6 9v6"/><path d="M9 6h6a3 3 0 0 1 0 6h-3"/>',
+  sparkles:'<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.9 2.4 2.4.9-2.4.9L19 21.6l-.9-2.4-2.4-.9 2.4-.9z"/>',
+  calendar:'<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 9.5h18"/>',
+  form:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/>',
+  layout:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>',
+  chart:'<path d="M3 3v18h18"/><path d="M7 16l4-5 3.5 3 4.5-7"/>',
+  plug:'<path d="M9 2v5M15 2v5"/><path d="M5.5 7h13v3.5a6.5 6.5 0 0 1-13 0z"/><path d="M12 17v5"/>',
+  shield:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+  settings:'<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3"/><path d="M1.5 14h5M9.5 8h5M17.5 16h5"/>',
+  help:'<circle cx="12" cy="12" r="9"/><path d="M9.6 9.2a2.4 2.4 0 0 1 4.8.4c0 1.6-2.4 2-2.4 3.4"/><path d="M12 16.8h.01"/>',
+  search:'<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
+  bell:'<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  x:'<path d="M18 6L6 18M6 6l12 12"/>',
+  chev:'<path d="M6 9l6 6 6-6"/>',
+  phone:'<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 2 .7 2.9a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.2-1.2a2 2 0 0 1 2.1-.5c.9.3 1.9.5 2.9.7a2 2 0 0 1 1.7 2z"/>',
+  mail:'<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 6L2 7"/>',
+  instagram:'<rect x="2.5" y="2.5" width="19" height="19" rx="5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.6" cy="6.4" r=".8"/>',
+  globe:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14.5 14.5 0 0 1 4 9 14.5 14.5 0 0 1-4 9 14.5 14.5 0 0 1-4-9 14.5 14.5 0 0 1 4-9z"/>',
+  send:'<path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/>',
+  check:'<path d="M20 6L9 17l-5-5"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/>',
+  tag:'<path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L2.2 12.2A2 2 0 0 1 1.5 10.8V2h8.8a2 2 0 0 1 1.4.6l8.9 8.9a2 2 0 0 1 0 2.9z"/><circle cx="7.5" cy="7.5" r="1.4"/>',
+  star:'<path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8-6.2-3.3-6.2 3.3L6.9 14.2l-5-4.9 6.9-1z"/>',
+  trash:'<path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>',
+  edit:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+  arrow:'<path d="M5 12h14M13 6l6 6-6 6"/>',
+  bot:'<rect x="4.5" y="8" width="15" height="11" rx="3"/><path d="M12 8V4.5M9 4.5h6"/><circle cx="9.2" cy="13.2" r="1"/><circle cx="14.8" cy="13.2" r="1"/><path d="M9 16.8h6"/>',
+  pause:'<rect x="6" y="4" width="4" height="16" rx="1.2"/><rect x="14" y="4" width="4" height="16" rx="1.2"/>',
+  play:'<path d="M6 4.5l14 7.5-14 7.5z"/>',
+  more:'<circle cx="5" cy="12" r="1.1"/><circle cx="12" cy="12" r="1.1"/><circle cx="19" cy="12" r="1.1"/>',
+  filter:'<path d="M22 3H2l8 9.5V19l4 2v-8.5z"/>',
+  refresh:'<path d="M23 4v6h-6"/><path d="M20.5 15a9 9 0 1 1-2.1-9.4L23 10"/>',
+  zap:'<path d="M13 2L3 14h9l-1 8 10-12h-9z"/>',
+  wallet:'<rect x="2" y="6" width="20" height="14" rx="2"/><circle cx="16" cy="13" r="2"/><path d="M2 10h20"/>',
+  upload:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5M12 3v12"/>',
+  eye:'<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',
+  link:'<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>',
+  database:'<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.7-4 3-9 3s-9-1.3-9-3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/>',
+  cpu:'<rect x="4.5" y="4.5" width="15" height="15" rx="2"/><rect x="9.5" y="9.5" width="5" height="5"/><path d="M9.5 1.5v3M14.5 1.5v3M9.5 19.5v3M14.5 19.5v3M19.5 9.5h3M19.5 14.5h3M1.5 9.5h3M1.5 14.5h3"/>',
+  checkc:'<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9.5"/>',
+  alert:'<path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9.5v4M12 17h.01"/>',
+  paperclip:'<path d="M21.4 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>',
+  file:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>',
+  building:'<rect x="4" y="2.5" width="16" height="19" rx="2"/><path d="M9 21.5v-5h6v5"/><path d="M8.5 6.5h1.5M13.5 6.5H15M8.5 10h1.5M13.5 10H15M8.5 13.5h1.5M13.5 13.5H15"/>',
+  sliders:'<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3"/><path d="M1.5 14h5M9.5 8h5M17.5 16h5"/>',
+  power:'<path d="M18.4 6.6a9 9 0 1 1-12.8 0"/><path d="M12 2v10"/>',
+  copy:'<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+  inbox:'<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5h13L22 12v7a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-7z"/>',
+  send2:'<path d="M12 22V8M6 14l6-6 6 6"/>',
+  target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/>',
+  user:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+  doc:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h4"/>',
+  book:'<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V2H6.5A2.5 2.5 0 0 0 4 4.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/>',
+  webhook:'<path d="M18 16.98a4 4 0 1 0 0-5.96"/><circle cx="6" cy="17" r="3"/><circle cx="18" cy="6" r="3"/><path d="M9 17l3-5 6-6M12 12l6 5"/>',
+  clock2:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>',
+  hourglass:'<path d="M6 2h12M6 22h12"/><path d="M7 2c0 6 3 8 5 10-2 2-5 4-5 10M17 2c0 6-3 8-5 10 2 2 5 4 5 10"/>',
+  wallet2:'<path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/>',
+  arrowup:'<path d="M12 19V5M5 12l7-7 7 7"/>',
+  arrowdown:'<path d="M12 5v14M19 12l-7 7-7-7"/>'
+};
+function icon(name, size, color){
+  const s = size||16;
+  return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="none" stroke="'+(color||'currentColor')+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+ICONS[name]+'</svg>';
+}
+/* hydrate static icon placeholders */
+function hydrateIcons(root){
+  (root||document).querySelectorAll('[data-ic]').forEach(el=>{ el.innerHTML = icon(el.dataset.ic, el.dataset.size||16); el.classList.remove('ico'); el.classList.add('ico-rendered'); });
+}
+
+/* ================= UTILS ================= */
+const $ = s=>document.querySelector(s);
+const esc = s=>String(s==null?'':s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const BRL = v=>v.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
+const fmtNum = n=>n.toLocaleString('pt-BR');
+const nowTime = ()=>new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+const relTime = mins=>{ if(mins<60) return 'há '+mins+' min'; const h=Math.round(mins/60); if(h<24) return 'há '+h+'h'; return 'há '+Math.round(h/24)+'d'; };
+const AV_GRADS = ['linear-gradient(135deg,#8B5CF6,#6D5DF6)','linear-gradient(135deg,#3B82F6,#2563EB)','linear-gradient(135deg,#10B981,#059669)','linear-gradient(135deg,#F59E0B,#EA580C)','linear-gradient(135deg,#EC4899,#BE185D)','linear-gradient(135deg,#06B6D4,#0891B2)','linear-gradient(135deg,#F43F5E,#DC2626)','linear-gradient(135deg,#84CC16,#4D7C0F)'];
+const avGrad = name=>{ let h=0; for(const ch of name) h=(h*31+ch.charCodeAt(0))>>>0; return AV_GRADS[h%AV_GRADS.length]; };
+const initials = name=>name.split(' ').map(p=>p[0]).slice(0,2).join('').toUpperCase();
+const av = (name,size)=>'<span class="av av-'+size+'" style="background:'+avGrad(name)+'">'+initials(name)+'</span>';
+const CHANNELS = {
+  whatsapp:{label:'WhatsApp', color:'#16A34A', bg:'#E4F8EC', icon:'phone'},
+  instagram:{label:'Instagram', color:'#BE185D', bg:'#FDE8F1', icon:'instagram'},
+  email:{label:'E-mail', color:'#1D4ED8', bg:'#E8EFFE', icon:'mail'},
+  webchat:{label:'Webchat', color:'#6D28D9', bg:'#EFEDFE', icon:'globe'}
+};
+const chanChip = ch=>{ const c=CHANNELS[ch]; return '<span class="tag" style="background:'+c.bg+';color:'+c.color+'">'+icon(c.icon,11)+c.label+'</span>'; };
+const stageMeta = {
+  novo:{name:'Novo Lead', color:'#6366F1', bg:'#E7E5FE'},
+  qualificado:{name:'Qualificado', color:'#0284C7', bg:'#E0F2FE'},
+  proposta:{name:'Proposta', color:'#D97706', bg:'#FEF3C7'},
+  venda:{name:'Venda', color:'#059669', bg:'#D1FAE5'}
+};
+function toast(msg, type, title){
+  const t = type||'info';
+  const meta = {info:{bg:'#3B82F6',ic:'info',tt:'Info'}, success:{bg:'#22C55E',ic:'check',tt:'Sucesso'}, warn:{bg:'#F59E0B',ic:'alert',tt:'Atenção'}, event:{bg:'#8B5CF6',ic:'zap',tt:'Evento'}}[t];
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.innerHTML = '<span class="t-ico" style="background:'+meta.bg+'">'+icon(meta.ic,14,'#fff')+'</span><div><div class="t-t">'+(title||meta.tt)+'</div><div class="t-m">'+msg+'</div></div>';
+  $('#toast-root').appendChild(el);
+  setTimeout(()=>{ el.style.transition='opacity .3s,transform .3s'; el.style.opacity='0'; el.style.transform='translateY(8px)'; setTimeout(()=>el.remove(),300); }, 4200);
+}
+function pushEvent(kind, text, ttl){
+  state.events.unshift({kind, text, time: ttl||nowTime()});
+  if(state.events.length>40) state.events.pop();
+}
+function openModal(html){
+  $('#modal-root').innerHTML = '<div class="modal-overlay" data-action="close-modal"><div class="modal" data-stop="1">'+html+'</div></div>';
+}
+function closeModal(){ $('#modal-root').innerHTML=''; }
+function openDrawer(html){
+  $('#drawer-root').innerHTML = '<div class="drawer-overlay" data-action="close-drawer"></div><div class="drawer-panel">'+html+'</div>';
+}
+function closeDrawer(){ $('#drawer-root').innerHTML=''; }
+
+/* ================= MOCK DATA ================= */
+const state = {
+  view:'dashboard',
+  contacts:[],
+  conversations:[],
+  pipeline:{stages:[
+    {id:'novo', name:'Novo Lead', color:'#6366F1', sum:0, items:[]},
+    {id:'qualificado', name:'Qualificado', color:'#0284C7', sum:0, items:[]},
+    {id:'proposta', name:'Proposta', color:'#D97706', sum:0, items:[]},
+    {id:'venda', name:'Venda', color:'#059669', sum:0, items:[]}
+  ]},
+  workflows:[],
+  agents:[],
+  appointments:[],
+  campaigns:[],
+  events:[],
+  chatMode:'ai',
+  selectedChat:null,
+  analytics:{leads30:[], funnel:[], channels:[], origins:[]},
+  admin:null,
+  integration:{
+    evolution:{baseUrl:localStorage.getItem('nexus.evolution.baseUrl')||'https://gsqtqqfylbuqaxxcoi1eftho.reactfly.run.place',apiKey:localStorage.getItem('nexus.evolution.apiKey')||'',instance:localStorage.getItem('nexus.evolution.instance')||'nexus-prod',connected:!!localStorage.getItem('nexus.evolution.apiKey')}
+  },
+  activeWorkflow:0,
+  selectedNode:null
+};
+
+async function evolutionRequest(path, options={}){
+  const cfg=state.integration.evolution;
+  if(!cfg.apiKey) throw new Error('Configure a API key do Evolution GO primeiro.');
+  const response=await fetch(cfg.baseUrl.replace(/\/$/,'')+path,{...options,headers:{'Content-Type':'application/json',apikey:cfg.apiKey,...(options.headers||{})}});
+  const body=await response.text();
+  let data; try{data=body?JSON.parse(body):{}}catch{data={raw:body};}
+  if(!response.ok) throw new Error(data.message||data.error||'Evolution GO respondeu '+response.status);
+  return data;
+}
+
+function evolutionConfigModal(){
+  const c=state.integration.evolution;
+  openModal('<div class="m-head"><h3>Evolution GO</h3><div class="grow"></div><button class="icon-btn" data-action="close-modal"><span data-ic="x" data-size="14"></span></button></div>'+ 
+    '<div class="m-body"><div class="small muted mb12">Conecte o gateway WhatsApp ao Nexus. A chave fica somente neste navegador.</div>'+ 
+    '<div class="field"><span class="f-label">URL da API</span><input class="f-input" id="evo-url" value="'+esc(c.baseUrl)+'"></div>'+ 
+    '<div class="field mt12"><span class="f-label">API key</span><input class="f-input" id="evo-key" type="password" value="'+esc(c.apiKey)+'" placeholder="GLOBAL_API_KEY"></div>'+ 
+    '<div class="field mt12"><span class="f-label">Instância padrão</span><input class="f-input" id="evo-instance" value="'+esc(c.instance)+'"></div>'+ 
+    '<div class="flex mt16" style="gap:8px"><button class="btn btn-soft btn-sm" data-action="evo-test">Testar conexão</button><span id="evo-result" class="small muted"></span></div></div>'+ 
+    '<div class="m-foot"><button class="btn btn-ghost btn-sm" data-action="close-modal">Cancelar</button><button class="btn btn-primary btn-sm" data-action="save-evo">Salvar integração</button></div>');
+}
+
+/* ---- contacts ---- */
+function tl(...items){ return items.map(i=>({type:i[0], text:i[1], time:i[2]})); }
+function makeContacts(){
+  return [
+    {id:1, name:'João Silva', company:'Silva Autopeças', phone:'+55 62 99901-1234', email:'joao.silva@gmail.com', channel:'whatsapp', origin:'Meta Ads', tags:['Lead','Orçamento'], score:87, stage:'qualificado', value:2000, owner:'Carlos', last:8, lastLabel:'WhatsApp recebido',
+     timeline:tl(['in','WhatsApp recebido: "Quero saber o preço do plano empresarial"','14:32'],['ai','IA respondeu oferecendo planos e agendou envio da tabela','14:33'],['link','Cliente acessou o link da tabela de preços','14:40'],['opp','Oportunidade criada — Orçamento de R$ 2.000','14:48'],['user','Vendedor Carlos assumiu a conversa','15:10'],['tag','Tag "Orçamento" adicionada','15:12'])},
+    {id:2, name:'Maria Oliveira', company:'Mercado Boa Vista', phone:'+55 62 99876-5432', email:'maria.oliveira@hotmail.com', channel:'whatsapp', origin:'Indicação', tags:['Lead','Quente'], score:92, stage:'qualificado', value:5000, owner:'Ana', last:25, lastLabel:'Mensagem recebida',
+     timeline:tl(['in','WhatsApp recebido: "Oi! A Fernanda me indicou vocês"','09:12'],['ai','IA respondeu com apresentação da empresa','09:12'],['form','Formulário de interesse preenchido (site)','09:20'],['opp','Oportunidade criada — R$ 5.000','09:34'],['ai','IA agendou demo com consultor','10:02'])},
+    {id:3, name:'Pedro Santos', company:'Pedro Santos ME', phone:'+55 62 99123-4567', email:'pedro.santos@outlook.com', channel:'instagram', origin:'Instagram', tags:['Lead'], score:70, stage:'proposta', value:8000, owner:'Carlos', last:210, lastLabel:'Proposta enviada',
+     timeline:tl(['in','DM no Instagram: "Fazem site com loja virtual?"','11:05'],['ai','IA qualificou e coletou e-mail','11:07'],['opp','Oportunidade criada — R$ 8.000','11:20'],['out','Proposta enviada por e-mail','12:40'])},
+    {id:4, name:'Lucas Almeida', company:'Almeida Tech', phone:'+55 62 98456-7890', email:'lucas@almeidatech.com.br', channel:'webchat', origin:'Site', tags:['Cliente'], score:95, stage:'venda', value:12000, owner:'Ana', last:3200, lastLabel:'Contrato assinado',
+     timeline:tl(['form','Formulário do site preenchido','03/06'],['in','Webchat iniciado','03/06'],['opp','Oportunidade criada — R$ 12.000','03/06'],['out','Proposta enviada','04/06'],['check','Contrato assinado — Venda fechada','07/06'])},
+    {id:5, name:'Ana Costa', company:'Costa Construtora', phone:'+55 62 99654-3210', email:'ana.costa@gmail.com', channel:'whatsapp', origin:'Meta Ads', tags:['Lead','Novo'], score:61, stage:'novo', value:3500, owner:'—', last:45, lastLabel:'WhatsApp recebido',
+     timeline:tl(['in','WhatsApp recebido: "Boa tarde! Vi o anúncio de vocês"','16:05'],['ai','IA iniciou qualificação','16:05'])},
+    {id:6, name:'Carlos Pereira', company:'Pereira Contabilidade', phone:'+55 62 98123-7654', email:'cpereira@contab.com.br', channel:'email', origin:'Google Ads', tags:['Lead','Orçamento'], score:78, stage:'proposta', value:7000, owner:'Carlos', last:1300, lastLabel:'E-mail respondido',
+     timeline:tl(['in','E-mail recebido: "Preciso de um sistema para minha contabilidade"','08/08'],['out','E-mail enviado com apresentação','08/08'],['opp','Oportunidade criada — R$ 7.000','09/08'],['out','Proposta enviada','12/08'])},
+    {id:7, name:'Fernanda Lima', company:'Lima Estética', phone:'+55 62 99765-4321', email:'fernanda@limaestetica.com', channel:'instagram', origin:'Instagram', tags:['Lead'], score:74, stage:'proposta', value:4500, owner:'Ana', last:60, lastLabel:'DM recebida',
+     timeline:tl(['in','DM no Instagram: "Qual o valor da consultoria?"','17:22'],['ai','IA respondeu e encaminhou tabela','17:23'],['opp','Oportunidade criada — R$ 4.500','17:40'])},
+    {id:8, name:'Rafael Souza', company:'Souza Advocacia', phone:'+55 62 99987-6543', email:'rafael.souza@adv.br', channel:'whatsapp', origin:'Meta Ads', tags:['Lead','Frio'], score:48, stage:'novo', value:1800, owner:'—', last:4600, lastLabel:'Sem resposta',
+     timeline:tl(['form','Formulário do site preenchido','05/08'],['out','WhatsApp enviado','05/08'],['out','Follow-up automático enviado','07/08'])},
+    {id:9, name:'Juliana Rocha', company:'Rocha Modas', phone:'+55 62 98234-5678', email:'ju.rocha@yahoo.com', channel:'webchat', origin:'Site', tags:['Cliente'], score:96, stage:'venda', value:6500, owner:'Carlos', last:6100, lastLabel:'Venda fechada',
+     timeline:tl(['in','Webchat iniciado','02/07'],['opp','Oportunidade criada — R$ 6.500','02/07'],['check','Venda fechada via WhatsApp','05/07'])},
+    {id:10, name:'Bruno Dias', company:'Dias Transportes', phone:'+55 62 99321-8765', email:'bruno@diastransportes.com', channel:'whatsapp', origin:'Indicação', tags:['Lead','Quente'], score:88, stage:'qualificado', value:4200, owner:'Ana', last:95, lastLabel:'Mensagem recebida',
+     timeline:tl(['in','WhatsApp recebido: "Quanto custa para 4 usuários?"','13:10'],['ai','IA respondeu com valores por plano','13:11'],['opp','Oportunidade criada — R$ 4.200','13:30'])},
+    {id:11, name:'Camila Ferreira', company:'Camila Beauty', phone:'+55 62 99888-7777', email:'camila@beauty.com', channel:'instagram', origin:'Instagram', tags:['Lead'], score:55, stage:'novo', value:2400, owner:'—', last:340, lastLabel:'DM recebida',
+     timeline:tl(['in','DM: "Vocês mexem com agendamento de clientes?"','10:44'],['ai','IA respondeu e pediu mais detalhes','10:45'])},
+    {id:12, name:'Diego Martins', company:'Martins Imóveis', phone:'+55 62 99666-5555', email:'diego@martinsimoveis.com', channel:'email', origin:'Google Ads', tags:['Lead'], score:80, stage:'qualificado', value:5100, owner:'Carlos', last:1500, lastLabel:'E-mail recebido',
+     timeline:tl(['in','E-mail: "Gostaria de uma demonstração"','11/08'],['out','E-mail: demo agendada para 15/08','11/08'],['opp','Oportunidade criada — R$ 5.100','15/08'])},
+    {id:13, name:'Patrícia Gomes', company:'Gomes Alimentos', phone:'+55 62 98555-4444', email:'patricia@gomesalimentos.com', channel:'whatsapp', origin:'Meta Ads', tags:['Lead','Novo'], score:58, stage:'novo', value:2900, owner:'—', last:18, lastLabel:'WhatsApp recebido',
+     timeline:tl(['in','WhatsApp recebido: "Boa tarde! Pode me mandar o catálogo?"','18:02'],['ai','IA enviou catálogo e iniciou qualificação','18:03'])},
+    {id:14, name:'Thiago Barbosa', company:'Barbosa Fitness', phone:'+55 62 99444-3333', email:'thiago@barbosafit.com', channel:'webchat', origin:'Site', tags:['Lead','Orçamento'], score:66, stage:'qualificado', value:3800, owner:'Ana', last:300, lastLabel:'Webchat finalizado',
+     timeline:tl(['form','Formulário do site preenchido','10:20'],['in','Webchat: "Quero automatizar meu atendimento"','10:22'],['opp','Oportunidade criada — R$ 3.800','10:45'])}
+  ];
+}
+
+/* ---- conversations ---- */
+function makeConversations(){
+  return [
+    {id:'c1', name:'João Silva', channel:'whatsapp', unread:2, ai:true, status:'IA ATENDENDO', time:'14:52',
+     messages:[
+       {from:'in', name:'João', text:'Boa tarde! Quero saber o preço do plano empresarial.', time:'14:32'},
+       {from:'ai', name:'IA', text:'Boa tarde, João! 👋 Claro que sim. Posso te enviar a tabela de preços dos nossos planos por aqui? Só para eu te indicar o ideal: hoje vocês têm quantos usuários usando sistema?', time:'14:33'},
+       {from:'in', name:'João', text:'Somos em 6 pessoas. E vocês integram com WhatsApp, né?', time:'14:36'},
+       {from:'ai', name:'IA', text:'Perfeito, 6 usuários! Para esse tamanho, o plano Profissional (R$ 497/mês) é o mais indicado — inclui WhatsApp integrado, CRM, funis e 3 agentes de IA. Já enviei o link da tabela completa aqui no chat: nexus.app/precos', time:'14:37'},
+       {from:'link', name:'João', text:'🔗 João acessou o link da tabela de preços', time:'14:40'},
+       {from:'in', name:'João', text:'Legal! Dá pra marcar uma reunião para ver uma demo?', time:'14:47'},
+       {from:'ai', name:'IA', text:'Com certeza! 🗓️ Vejo aqui que amanhã temos horários às 09:00, 10:30 e 14:00 com o consultor Alexandre. Qual fica melhor para você?', time:'14:48'},
+       {from:'in', name:'João', text:'Amanhã às 10:30.', time:'14:50'},
+       {from:'ai', name:'IA', text:'Perfeito! Agendado: amanhã às 10:30 (30 min) com Alexandre. Você recebeu o convite com o link da reunião. Qualquer coisa, é só chamar! 😊', time:'14:52'}]},
+    {id:'c2', name:'Ana Costa', channel:'whatsapp', unread:1, ai:true, status:'IA ATENDENDO', time:'16:08',
+     messages:[
+       {from:'in', name:'Ana', text:'Boa tarde! Vi o anúncio de vocês no Instagram, quero saber como funciona.', time:'16:05'},
+       {from:'ai', name:'IA', text:'Boa tarde, Ana! 😊 Somos uma plataforma de CRM + automação omnichannel: WhatsApp, Instagram, e-mail e webchat em um só lugar, com agentes de IA que atendem 24h. O que você mais precisa hoje: atendimento, captação de leads ou agendamento?', time:'16:06'},
+       {from:'in', name:'Ana', text:'Atendimento. Hoje perco muita mensagem no WhatsApp.', time:'16:08'}]},
+    {id:'c3', name:'Fernanda Lima', channel:'instagram', unread:0, ai:true, status:'IA ATENDENDO', time:'17:41',
+     messages:[
+       {from:'in', name:'Fernanda', text:'Qual o valor da consultoria de vocês?', time:'17:22'},
+       {from:'ai', name:'IA', text:'Oi, Fernanda! 💜 Nossa consultoria comercial custa R$ 490 (60 min) e inclui diagnóstico do seu funil + plano de ação. Também temos a sessão de diagnóstico gratuito de 15 min. Quer que eu agende?', time:'17:23'},
+       {from:'in', name:'Fernanda', text:'Fechado, quero a gratuita primeiro.', time:'17:40'},
+       {from:'ai', name:'IA', text:'Ótima escolha! Ainda hoje temos 18:30 livre. Posso confirmar?', time:'17:41'}]},
+    {id:'c4', name:'Carlos Pereira', channel:'email', unread:0, ai:false, status:'Humano', time:'09:15',
+     messages:[
+       {from:'in', name:'Carlos', text:'Bom dia! Recebi a proposta, preciso de um ajuste no escopo — retirar o módulo de notas fiscais.', time:'08:57'},
+       {from:'out', name:'Carlos (vendedor)', text:'Bom dia! Sem problema, ajusto aqui e te devolvo até o fim do dia.', time:'09:15'}]},
+    {id:'c5', name:'Thiago Barbosa', channel:'webchat', unread:0, ai:true, status:'IA ATENDENDO', time:'10:47',
+     messages:[
+       {from:'in', name:'Thiago', text:'Quero automatizar meu atendimento no site.', time:'10:20'},
+       {from:'ai', name:'IA', text:'Perfeito! Nosso webchat com IA responde visitantes 24h e salva cada conversa no CRM. Posso criar um agente para a sua página em minutos.', time:'10:21'},
+       {from:'in', name:'Thiago', text:'E depois do atendimento, como fico sabendo?', time:'10:46'},
+       {from:'ai', name:'IA', text:'Cada lead vira um contato no CRM com score e timeline. Se a IA não resolver, o time é notificado em tempo real para assumir.', time:'10:47'}]},
+    {id:'c6', name:'Bruno Dias', channel:'whatsapp', unread:0, ai:true, status:'IA ATENDENDO', time:'13:35',
+     messages:[
+       {from:'in', name:'Bruno', text:'Quanto custa para 4 usuários?', time:'13:10'},
+       {from:'ai', name:'IA', text:'Oi, Bruno! Para 4 usuários, o plano Profissional (R$ 497/mês) já cobre com folga. Se quiser, posso montar um orçamento personalizado com os módulos que você usar.', time:'13:11'},
+       {from:'in', name:'Bruno', text:'Pode montar sim.', time:'13:35'}]}
+  ];
+}
+
+/* ---- pipeline ---- */
+function makePipeline(){
+  const defs = [
+    {id:'p1', name:'João Silva', company:'Silva Autopeças', value:2000, stage:'qualificado', tags:['Orçamento'], score:87, owner:'Carlos'},
+    {id:'p2', name:'Maria Oliveira', company:'Mercado Boa Vista', value:5000, stage:'qualificado', tags:['Quente'], score:92, owner:'Ana'},
+    {id:'p3', name:'Pedro Santos', company:'Pedro Santos ME', value:8000, stage:'proposta', tags:['Site'], score:70, owner:'Carlos'},
+    {id:'p4', name:'Lucas Almeida', company:'Almeida Tech', value:12000, stage:'venda', tags:['Cliente'], score:95, owner:'Ana'},
+    {id:'p5', name:'Ana Costa', company:'Costa Construtora', value:3500, stage:'novo', tags:['Novo'], score:61, owner:'—'},
+    {id:'p6', name:'Carlos Pereira', company:'Pereira Contabilidade', value:7000, stage:'proposta', tags:['Orçamento'], score:78, owner:'Carlos'},
+    {id:'p7', name:'Fernanda Lima', company:'Lima Estética', value:4500, stage:'proposta', tags:['Instagram'], score:74, owner:'Ana'},
+    {id:'p8', name:'Rafael Souza', company:'Souza Advocacia', value:1800, stage:'novo', tags:['Frio'], score:48, owner:'—'},
+    {id:'p9', name:'Juliana Rocha', company:'Rocha Modas', value:6500, stage:'venda', tags:['Cliente'], score:96, owner:'Carlos'},
+    {id:'p10', name:'Bruno Dias', company:'Dias Transportes', value:4200, stage:'qualificado', tags:['Quente'], score:88, owner:'Ana'},
+    {id:'p11', name:'Camila Ferreira', company:'Camila Beauty', value:2400, stage:'novo', tags:['Novo'], score:55, owner:'—'},
+    {id:'p12', name:'Diego Martins', company:'Martins Imóveis', value:5100, stage:'qualificado', tags:['Google'], score:80, owner:'Carlos'},
+    {id:'p13', name:'Patrícia Gomes', company:'Gomes Alimentos', value:2900, stage:'novo', tags:['Novo'], score:58, owner:'—'},
+    {id:'p14', name:'Thiago Barbosa', company:'Barbosa Fitness', value:3800, stage:'qualificado', tags:['Orçamento'], score:66, owner:'Ana'}
+  ];
+  defs.forEach(d=>{ const s = state.pipeline.stages.find(x=>x.id===d.stage); if(s) s.items.push(d); });
+  state.pipeline.stages.forEach(s=>s.sum = s.items.reduce((a,b)=>a+b.value,0));
+}
+
+/* ---- workflows ---- */
+function makeWorkflows(){
+  return [
+    {id:'wf1', name:'Meta Ads → SDR IA', active:true, runs:342, nodes:[
+      {id:'t1', type:'trigger', kind:'Trigger', name:'Lead Meta Ads', detail:'form.submitted · Form: Meta Lead', x:26, y:22},
+      {id:'a1', type:'action', kind:'Ação', name:'Criar contato', detail:'No CRM, com origem "Meta Ads"', x:290, y:22},
+      {id:'a2', type:'action', kind:'Ação', name:'Enviar WhatsApp', detail:'Mensagem de boas-vindas', x:554, y:22},
+      {id:'a3', type:'ai', kind:'IA', name:'Agente SDR', detail:'Qualificar e responder dúvidas', x:818, y:22},
+      {id:'c1', type:'condition', kind:'Condição', name:'Cliente respondeu?', detail:'Tempo limite: 2 h', x:554, y:230},
+      {id:'a4', type:'action', kind:'Ação', name:'Criar oportunidade', detail:'Etapa: Qualificado', x:290, y:404},
+      {id:'d1', type:'delay', kind:'Atraso', name:'Esperar 1 dia', detail:'Aguardar resposta', x:26, y:230},
+      {id:'a5', type:'action', kind:'Ação', name:'Follow-up WhatsApp', detail:'Mensagem 2 · tocar se frio', x:26, y:404}
+    ], edges:[
+      {from:'t1', to:'a1', label:''},{from:'a1', to:'a2', label:''},{from:'a2', to:'a3', label:''},{from:'a3', to:'c1', label:''},
+      {from:'c1', to:'a4', label:'SIM', on:true},{from:'c1', to:'d1', label:'NÃO', on:false},{from:'d1', to:'a5', label:''}
+    ]},
+    {id:'wf2', name:'Follow-up de orçamento', active:false, runs:118, nodes:[
+      {id:'t1', type:'trigger', kind:'Trigger', name:'Oportunidade criada', detail:'opportunity.created', x:26, y:22},
+      {id:'d1', type:'delay', kind:'Atraso', name:'Esperar 1 hora', detail:'Tempo de leitura', x:290, y:22},
+      {id:'c1', type:'condition', kind:'Condição', name:'Abriu a mensagem?', detail:'Webhook de leitura', x:554, y:22},
+      {id:'a1', type:'action', kind:'Ação', name:'Enviar proposta', detail:'PDF + link de assinatura', x:818, y:22},
+      {id:'a2', type:'action', kind:'Ação', name:'Marcar "Lead frio"', detail:'Tag + pausar follow-up', x:818, y:230}
+    ], edges:[
+      {from:'t1', to:'d1', label:''},{from:'d1', to:'c1', label:''},{from:'c1', to:'a1', label:'SIM', on:true},{from:'c1', to:'a2', label:'NÃO', on:false}
+    ]},
+    {id:'wf3', name:'Webhook Meta → SDR', active:false, runs:0, nodes:[
+      {id:'t1', type:'trigger', kind:'Trigger', name:'Webhook recebido', detail:'webhook.received · Meta Lead Ads', x:26, y:22},
+      {id:'a1', type:'action', kind:'Ação', name:'Criar contato', detail:'Dedupe por telefone', x:290, y:22},
+      {id:'a2', type:'action', kind:'Ação', name:'Atribuir vendedor', detail:'Rodízio · equipe comercial', x:554, y:22},
+      {id:'a3', type:'ai', kind:'IA', name:'Qualificar lead', detail:'Score + primeira mensagem', x:818, y:22}
+    ], edges:[
+      {from:'t1', to:'a1', label:''},{from:'a1', to:'a2', label:''},{from:'a2', to:'a3', label:''}
+    ]}
+  ];
+}
+
+/* ---- agents ---- */
+function makeAgents(){
+  return [
+    {id:'ag1', name:'SDR IA', status:'ativo', statusLabel:'Ativo', color:'#8B5CF6', bg:'#F3F0FF',
+     desc:'Captura, qualifica e agenda leads que chegam pelo WhatsApp e formulários. Responde em segundos, 24h por dia.',
+     tools:['CRM','Agenda','Produtos','Pipeline','WhatsApp'],
+     obj:'Qualificar leads e agendar reuniões com consultores, sem depender de humano para o primeiro contato.',
+     pers:'Consultor comercial direto e objetivo, com tom profissional e empático.',
+     files:['produtos.pdf','precos.xlsx','FAQ.pdf','objeções.docx'],
+     limits:[['Máximo de 30 conversas simultâneas',true],['Não oferecer desconto acima de 10%',true],['Transferir para humano se sentimento negativo',true],['Não marcar reuniões fora do horário comercial',true]],
+     stats:{c:342, tx:'78%', t:'R$ 41,20'}},
+    {id:'ag2', name:'Atendimento', status:'ativo', statusLabel:'Ativo', color:'#2563EB', bg:'#E8EFFE',
+     desc:'Resolve dúvidas de clientes sobre produtos, pedidos, status e políticas. Acesso à base de conhecimento.',
+     tools:['CRM','Produtos','WhatsApp','E-mail'],
+     obj:'Resolver até 80% das dúvidas de suporte sem escalonar para humano.',
+     pers:'Atendente prestativo e paciente, fala português claro.',
+     files:['base-de-conhecimento.pdf','politicas.pdf'],
+     limits:[['Escalar para humano após 2 tentativas',true],['Não prometer prazos não confirmados',true]],
+     stats:{c:891, tx:'82%', t:'R$ 96,80'}},
+    {id:'ag3', name:'Qualificação', status:'rascunho', statusLabel:'Rascunho', color:'#F59E0B', bg:'#FEF3E2',
+     desc:'Analisa leads inativos e reativa com campanhas de reengajamento. Em desenvolvimento.',
+     tools:['CRM','Pipeline','WhatsApp'],
+     obj:'Reativar leads frios com follow-up inteligente e personalizado.',
+     pers:'Analista comercial estratégico.',
+     files:['playbook-reativacao.pdf'],
+     limits:[['Máximo 50 contatos/dia por campanha',true]],
+     stats:{c:0, tx:'—', t:'—'}}
+  ];
+}
+
+/* ---- appointments (weekdays 0=Mon..5=Sat) ---- */
+function makeAppointments(){
+  return [
+    {id:'ap1', day:4, start:9, end:9.5, client:'João Silva', service:'Consultoria', consultant:'Alexandre', color:'#8B5CF6'},
+    {id:'ap2', day:4, start:10.5, end:11.5, client:'Maria Oliveira', service:'Sessão comercial', consultant:'Alexandre', color:'#2563EB'},
+    {id:'ap3', day:4, start:14, end:14.5, client:'Diego Martins', service:'Diagnóstico gratuito', consultant:'Alexandre', color:'#10B981'},
+    {id:'ap4', day:4, start:16.5, end:17, client:'Patrícia Gomes', service:'Diagnóstico gratuito', consultant:'Ana', color:'#10B981'},
+    {id:'ap5', day:2, start:9, end:10, client:'Rafael Souza', service:'Sessão comercial', consultant:'Alexandre', color:'#2563EB'},
+    {id:'ap6', day:2, start:15, end:15.5, client:'Camila Ferreira', service:'Consultoria', consultant:'Ana', color:'#8B5CF6'},
+    {id:'ap7', day:5, start:9, end:9.5, client:'Bruno Dias', service:'Consultoria', consultant:'Alexandre', color:'#8B5CF6'},
+    {id:'ap8', day:0, start:11, end:12, client:'Juliana Rocha', service:'Sessão comercial', consultant:'Alexandre', color:'#2563EB'}
+  ];
+}
+
+/* ---- campaigns ---- */
+function makeCampaigns(){
+  return [
+    {id:'cp1', name:'Boas-vindas novos leads', channel:'whatsapp', segment:'Novos leads (7 dias)', status:'ativa', sent:842, total:860, rate:97.9, sched:'Fluxo disparado no 1º contato'},
+    {id:'cp2', name:'Black Novembro — Orçamentos', channel:'whatsapp', segment:'Orçamentos abertos', status:'ativa', sent:4820, total:12000, rate:40.2, sched:'Seg 10:00 · 12/10 → 30/11'},
+    {id:'cp3', name:'Reativação inativos', channel:'email', segment:'Inativos 60+ dias', status:'pausada', sent:2104, total:2104, rate:100, sched:'Pausada manualmente'},
+    {id:'cp4', name:'Newsletter de junho', channel:'email', segment:'Base completa', status:'concluida', sent:11480, total:11480, rate:100, sched:'15/06 · 09:00'},
+    {id:'cp5', name:'Retomada de orçamentos', channel:'whatsapp', segment:'Orçamentos 7+ dias', status:'rascunho', sent:0, total:238, rate:0, sched:'Não agendada'}
+  ];
+}
+
+/* ---- analytics / admin / events ---- */
+function makeAnalytics(){
+  const leads = [42,55,38,61,49,72,58,64,81,47,66,74,52,88,63,59,77,44,69,83,57,62,90,71,55,78,64,86,73,68];
+  return {
+    leads30: leads,
+    funnel:[{label:'Visitantes', value:12847},{label:'Leads', value:3210},{label:'Oportunidades', value:486},{label:'Vendas', value:142}],
+    channels:[{name:'WhatsApp', value:3412, color:'#16A34A'},{name:'Instagram', value:1284, color:'#EC4899'},{name:'E-mail', value:952, color:'#2563EB'},{name:'Webchat', value:503, color:'#8B5CF6'}],
+    origins:[{name:'Meta Ads', pct:41, count:1316},{name:'Google Ads', pct:27, count:867},{name:'Orgânico', pct:18, count:578},{name:'Indicação', pct:14, count:449}]
+  };
+}
+function makeAdmin(){
+  return {
+    tenants:[
+      {id:'t1', name:'Sua Agência', plan:'Profissional', price:497, users:{v:8,m:10}, numbers:{v:3,m:5}, contacts:{v:12847,m:50000}, agents:{v:2,m:5}, status:'ok'},
+      {id:'t2', name:'Agência Aurora', plan:'Starter', price:97, users:{v:2,m:3}, numbers:{v:1,m:2}, contacts:{v:4200,m:10000}, agents:{v:0,m:2}, status:'ok'},
+      {id:'t3', name:'Studio Eleva', plan:'Starter', price:97, users:{v:3,m:3}, numbers:{v:1,m:2}, contacts:{v:1580,m:10000}, agents:{v:1,m:2}, status:'ok'}
+    ],
+    gateways:[
+      {name:'Evolution GO', type:'Custom', detail:'instância: nexus-prod · conexões: 3', rate:'1.2k msg/h', status:'ok'},
+      {name:'WhatsApp Cloud API', type:'Oficial', detail:'WABA 10987654321 · número: +55 62 3000-0000', rate:'890 msg/h', status:'ok'}
+    ],
+    workers:[
+      {name:'Campaign Worker', q:'8 jobs', status:'ok'},
+      {name:'Workflow Worker', q:'12 jobs', status:'ok'},
+      {name:'Webhook Worker', q:'3 jobs', status:'ok'},
+      {name:'AI Worker', q:'26 jobs', status:'ok'},
+      {name:'Notification Worker', q:'0 jobs', status:'ok'}
+    ],
+    health:{uptime:'99,97%', last:'há 38s', api:'42ms', db:'8ms', redis:'2ms'}
+  };
+}
+function makeEvents(){
+  return [
+    {kind:'stage', text:'Oportunidade "João Silva" movida: Novo Lead → Qualificado', time:'14:48'},
+    {kind:'ai', text:'Agente SDR respondeu a Ana Costa no WhatsApp', time:'16:06'},
+    {kind:'wf', text:'Workflow "Meta Ads → SDR IA" executado (run #342)', time:'16:05'},
+    {kind:'contact', text:'Novo contato criado via formulário do site — Thiago Barbosa', time:'10:20'},
+    {kind:'camp', text:'Campanha "Black Novembro" entregou 1.200 mensagens hoje', time:'09:00'},
+    {kind:'appt', text:'Agendamento confirmado: João Silva · amanhã 10:30 · Alexandre', time:'14:52'}
+  ];
+}
+
+/* ================= RENDER HELPERS ================= */
+function scoreRing(score, size){
+  const r = size/2-2.5, c = 2*Math.PI*r, pct = Math.min(100,Math.max(0,score));
+  const col = pct>=75?'#16A34A':pct>=55?'#D97706':'#DC2626';
+  return '<span class="score-ring" style="width:'+size+'px;height:'+size+'px"><svg width="'+size+'" height="'+size+'"><circle cx="'+size/2+'" cy="'+size/2+'" r="'+r+'" fill="none" stroke="#EDEFF7" stroke-width="3"/><circle cx="'+size/2+'" cy="'+size/2+'" r="'+r+'" fill="none" stroke="'+col+'" stroke-width="3" stroke-linecap="round" stroke-dasharray="'+c+'" stroke-dashoffset="'+(c-c*pct/100)+'"/></svg><span class="sr-v">'+pct+'</span></span>';
+}
+function svgChart(values, w, h, color){
+  const max = Math.max(...values)*1.15, min = Math.min(...values)*0.85;
+  const pad=6, n=values.length;
+  const pts = values.map((v,i)=>[pad+i*(w-2*pad)/(n-1), h-pad-((v-min)/(max-min||1))*(h-2*pad)]);
+  const line = pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+  const area = line+' L'+pts[pts.length-1][0].toFixed(1)+' '+(h-pad)+' L'+pts[0][0].toFixed(1)+' '+(h-pad)+' Z';
+  const g = (id)=>'<defs><linearGradient id="'+id+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="'+color+'" stop-opacity=".28"/><stop offset="100%" stop-color="'+color+'" stop-opacity="0"/></linearGradient></defs>';
+  const dots = pts.map((p,i)=>'<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="2.6" fill="#fff" stroke="'+color+'" stroke-width="2"/>').join('');
+  return '<svg width="'+w+'" height="'+h+'" viewBox="0 0 '+w+' '+h+'" style="width:100%;height:auto">'+g('grad1')+'<path d="'+area+'" fill="url(#grad1)"/><path d="'+line+'" fill="none" stroke="'+color+'" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>'+dots+'</svg>';
+}
+function weekDays(){
+  const now = new Date();
+  const dow = (now.getDay()+6)%7; // 0=Mon
+  const mon = new Date(now); mon.setDate(now.getDate()-dow);
+  const labels = ['Seg','Ter','Qua','Qui','Sex','Sáb'];
+  return labels.map((l,i)=>{ const d=new Date(mon); d.setDate(mon.getDate()+i); return {label:l, day:d.getDate(), month:d.getMonth(), isToday: i===dow}; });
+}
+function evIco(kind){
+  const m = {stage:{bg:'#E7E5FE',c:'#6D28D9',ic:'columns'}, ai:{bg:'#F3F0FF',c:'#6D28D9',ic:'bot'}, wf:{bg:'#E8EFFE',c:'#1D4ED8',ic:'workflow'}, contact:{bg:'#E7F6EC',c:'#15803D',ic:'user'}, camp:{bg:'#FEF3E2',c:'#B45309',ic:'megaphone'}, appt:{bg:'#E0F2FE',c:'#0369A1',ic:'calendar'}, msg:{bg:'#FDE8F1',c:'#BE185D',ic:'message'}};
+  const k = m[kind]||m.stage;
+  return '<span class="ev-ico" style="background:'+k.bg+';color:'+k.c+'">'+icon(k.ic,13)+'</span>';
+}
+
+/* ================= VIEWS ================= */
+const Views = {};
+
+/* ---------- DASHBOARD ---------- */
+Views.dashboard = function(){
+  const a = state.analytics;
+  const pipe = state.pipeline.stages;
+  const apptsToday = state.appointments.filter(x=>{ const d=new Date(); const dow=(d.getDay()+6)%7; return x.day===dow; });
+  const acts = state.events.slice(0,6);
+  return `
+  <div class="page-head">
+    <div>
+      <div class="ph-title">Dashboard</div>
+      <div class="ph-sub">Sexta-feira, 21 de agosto · visão geral da operação em tempo real</div>
+    </div>
+    <div class="ph-actions">
+      <div class="tabs">
+        <div class="tab active">Hoje</div><div class="tab">7 dias</div><div class="tab">30 dias</div>
+      </div>
+      <button class="btn btn-ghost btn-sm"><span data-ic="upload" data-size="13"></span>Exportar</button>
+    </div>
+  </div>
+
+  <div class="grid g4">
+    <div class="kpi">
+      <div class="kpi-top"><span class="kpi-icon" style="background:#E7E5FE;color:#6D28D9"><span data-ic="users"></span></span><div class="kpi-label">Contatos</div><span class="kpi-delta d-up" style="margin-left:auto"><span data-ic="arrowup" data-size="10"></span>12,4%</span></div>
+      <div class="kpi-value">12.847</div><div class="small muted">+1.386 este mês</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-top"><span class="kpi-icon" style="background:#E8EFFE;color:#1D4ED8"><span data-ic="message"></span></span><div class="kpi-label">Conversas hoje</div><span class="kpi-delta d-up" style="margin-left:auto"><span data-ic="arrowup" data-size="10"></span>8,1%</span></div>
+      <div class="kpi-value">342</div><div class="small muted">IA resolveu <b style="color:var(--green)">78%</b> sem humano</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-top"><span class="kpi-icon" style="background:#FEF3E2;color:#B45309"><span data-ic="columns"></span></span><div class="kpi-label">Oportunidades abertas</div><span class="kpi-delta d-up" style="margin-left:auto"><span data-ic="arrowup" data-size="10"></span>3,2%</span></div>
+      <div class="kpi-value">58</div><div class="small muted"><b>R$ 486.200</b> em pipeline</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-top"><span class="kpi-icon" style="background:#E7F6EC;color:#15803D"><span data-ic="target"></span></span><div class="kpi-label">Conversão de leads</div><span class="kpi-delta d-up" style="margin-left:auto"><span data-ic="arrowup" data-size="10"></span>0,8pp</span></div>
+      <div class="kpi-value">11,2%</div><div class="small muted">Meta do trimestre: 14%</div>
+    </div>
+  </div>
+
+  <div class="grid g-2-1 mt16">
+    <div class="card">
+      <div class="card-h">
+        <h3>Leads captados — últimos 30 dias</h3>
+        <span class="badge b-green"><span data-ic="arrowup" data-size="11"></span>+18% vs período anterior</span>
+        <div class="grow"></div>
+        <div class="legend">
+          <span class="lg"><i style="background:#6D5DF6"></i>Leads (3.210)</span>
+        </div>
+      </div>
+      <div class="card-b" style="padding:14px 18px 10px">
+        ${svgChart(a.leads30, 700, 190, '#6D5DF6')}
+        <div class="between mt8">
+          <span class="chart-tip">1 ago</span><span class="chart-tip">5 ago</span><span class="chart-tip">10 ago</span><span class="chart-tip">15 ago</span><span class="chart-tip">20 ago</span><span class="chart-tip">Hoje</span>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h3>Pipeline</h3><div class="grow"></div><span class="sub">R$ ${fmtNum(486200)}</span></div>
+      <div class="card-b" style="padding:8px 16px 12px">
+        ${pipe.map(s=>{
+          const pct = Math.round(s.sum/486200*100);
+          return '<div class="flex" style="padding:8px 0"><span class="kb-dot" style="background:'+s.color+'"></span><div class="grow"><div class="between"><span class="bold" style="font-size:12.5px">'+s.name+'</span><span class="small muted">'+s.items.length+' · '+BRL(s.sum)+'</span></div><div class="prog mt8"><div class="prog-fill" style="width:'+pct+'%;background:'+s.color+'"></div></div></div></div>';
+        }).join('')}
+      </div>
+      <div class="card-b" style="border-top:1px solid var(--border);padding:12px 16px">
+        <div class="between"><span class="small muted">Receita prevista (fechamento)</span><b>R$ 118.400</b></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g-3-1 mt16">
+    <div class="card">
+      <div class="card-h"><h3>Atividade recente</h3><div class="grow"></div><a class="small bold" style="color:var(--accent-dark);cursor:pointer" data-action="go-view" data-view="pipeline">Ver pipeline →</a></div>
+      <div class="card-b" style="padding:8px 16px">
+        <div class="evlog">
+          ${acts.map(e=>'<div class="ev-item">'+evIco(e.kind)+'<div class="grow"><div class="ev-t">'+e.text+'</div></div><span class="ev-time">'+e.time+'</span></div>').join('')}
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h3>Agenda de hoje</h3><div class="grow"></div><a class="small bold" style="color:var(--accent-dark);cursor:pointer" data-action="go-view" data-view="agenda">Abrir agenda →</a></div>
+      <div class="card-b" style="padding:8px 14px">
+        ${apptsToday.length? apptsToday.map(ap=>{
+          const svc = state.services.find(s=>s.name===ap.service)||{name:ap.service};
+          return '<div class="flex" style="padding:9px 2px"><span class="av av-28" style="background:'+ap.color+'">'+initials(ap.client)+'</span><div class="grow"><div class="bold" style="font-size:12.5px">'+ap.client+'</div><div class="small muted">'+ap.service+' · '+ap.consultant+'</div></div><span class="small bold" style="color:var(--muted)">'+String(Math.floor(ap.start)).padStart(2,'0')+':'+(ap.start%1? '30':'00')+'</span></div>';
+        }).join('') : '<div class="empty-state"><div class="es-ico"><span data-ic="calendar" data-size="22"></span></div><div class="es-t">Nenhum agendamento hoje</div><div class="es-s">A IA agenda automaticamente quando o lead pede</div></div>'}
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g3 mt16">
+    ${state.campaigns.filter(c=>c.status==='ativa').slice(0,3).map(c=>{
+      const pct = Math.round(c.sent/c.total*100);
+      return '<div class="card"><div class="card-b"><div class="between"><span class="bold">'+c.name+'</span>'+chanChip(c.channel)+'</div><div class="small muted mt8">'+c.segment+'</div><div class="between mt12"><span class="small muted">'+fmtNum(c.sent)+' de '+fmtNum(c.total)+' enviadas</span><b class="small">'+pct+'%</b></div><div class="prog mt8"><div class="prog-fill" style="width:'+pct+'%"></div></div><div class="small muted mt8">'+c.sched+'</div></div></div>';
+    }).join('')}
+  </div>`;
+};
+
+/* ---------- CONTATOS ---------- */
+let contactFilter = {q:'', channel:'todos', tag:'todas'};
+Views.contatos = function(){
+  const rows = state.contacts.filter(c=>{
+    if(contactFilter.channel!=='todos' && c.channel!==contactFilter.channel) return false;
+    if(contactFilter.tag!=='todas' && !c.tags.includes(contactFilter.tag)) return false;
+    const q = contactFilter.q.toLowerCase();
+    if(q && !(c.name.toLowerCase().includes(q)||c.phone.includes(q)||c.email.toLowerCase().includes(q)||c.company.toLowerCase().includes(q))) return false;
+    return true;
+  });
+  const allTags = [...new Set(state.contacts.flatMap(c=>c.tags))];
+  return `
+  <div class="page-head">
+    <div><div class="ph-title">Contatos</div><div class="ph-sub">12.847 contatos · visão 360° de cada relacionamento</div></div>
+    <div class="ph-actions">
+      <button class="btn btn-ghost btn-sm"><span data-ic="upload" data-size="13"></span>Importar</button>
+      <button class="btn btn-primary btn-sm" data-action="new-contact"><span data-ic="plus" data-size="13" style="color:#fff"></span>Novo contato</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-b" style="padding:12px 14px;border-bottom:1px solid var(--border)">
+      <div class="flex" style="gap:10px;flex-wrap:wrap">
+        <div class="tb-search" style="max-width:280px;flex:1"><span data-ic="search" data-size="14"></span><input id="ct-search" placeholder="Buscar por nome, telefone, empresa..." value="${esc(contactFilter.q)}"></div>
+        <div class="tabs" id="ct-channels">
+          <div class="tab ${contactFilter.channel==='todos'?'active':''}" data-f="todos">Todos</div>
+          ${Object.keys(CHANNELS).map(ch=>{const on=contactFilter.channel===ch?'active':'';return '<div class="tab '+on+'" data-f="'+ch+'">'+CHANNELS[ch].label+'</div>';}).join('')}
+        </div>
+        <select class="f-select" id="ct-tag" style="width:auto;padding:6px 10px">
+          <option value="todas">Todas as tags</option>
+          ${allTags.map(t=>'<option value="'+t+'"'+(contactFilter.tag===t?' selected':'')+'>'+t+'</option>').join('')}
+        </select>
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr>
+          <th style="width:26px"><input type="checkbox"></th><th>Contato</th><th>Canal</th><th>Origem</th><th>Tags</th><th>Score</th><th>Etapa</th><th>Responsável</th><th>Última atividade</th><th></th>
+        </tr></thead>
+        <tbody>
+          ${rows.map(c=>{
+            const st = stageMeta[c.stage];
+            return '<tr data-action="open-contact" data-id="'+c.id+'">'+
+              '<td><input type="checkbox" data-stop="1"></td>'+
+              '<td><div class="cell-name">'+av(c.name,32)+'<div class="grow"><div class="cn-t">'+c.name+'</div><div class="cn-s">'+c.company+' · '+c.phone+'</div></div></div></td>'+
+              '<td>'+chanChip(c.channel)+'</td>'+
+              '<td class="muted">'+c.origin+'</td>'+
+              '<td><div class="flex" style="gap:4px;flex-wrap:wrap">'+c.tags.map(t=>'<span class="tag tag-purple">'+t+'</span>').join('')+'</div></td>'+
+              '<td>'+scoreRing(c.score,28)+'</td>'+
+              '<td><span class="tag" style="background:'+st.bg+';color:'+st.color+'">'+st.name+'</span></td>'+
+              '<td class="flex" style="gap:6px">'+av(c.owner==='—'?'Sem responsável':c.owner,22)+'<span class="small">'+c.owner+'</span></td>'+
+              '<td class="muted small">'+c.lastLabel+' · '+relTime(c.last)+'</td>'+
+              '<td><span class="icon-btn" data-stop="1"><span data-ic="more" data-size="14"></span></span></td>'+
+            '</tr>';
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div class="card-b between" style="border-top:1px solid var(--border);padding:10px 16px">
+      <span class="small muted">Mostrando 1–${rows.length} de 12.847 contatos</span>
+      <div class="flex"><button class="btn btn-ghost btn-sm" disabled>Anterior</button><button class="btn btn-ghost btn-sm">Próxima</button></div>
+    </div>
+  </div>`;
+};
+
+function contactDrawer(c){
+  const st = stageMeta[c.stage];
+  return `
+  <button class="icon-btn dp-close" data-action="close-drawer"><span data-ic="x" data-size="15"></span></button>
+  <div class="dp-head">
+    <div class="flex" style="gap:13px">
+      ${av(c.name,56)}
+      <div class="grow">
+        <div class="bold" style="font-size:16px">${c.name}</div>
+        <div class="small muted">${c.company} · Criado em 12/07/2026</div>
+        <div class="flex mt8" style="gap:5px;flex-wrap:wrap">
+          ${c.tags.map(t=>'<span class="tag tag-purple">'+t+'</span>').join('')}
+          ${chanChip(c.channel)}
+        </div>
+      </div>
+    </div>
+    <div class="flex mt16" style="gap:7px">
+      <button class="btn btn-primary btn-sm grow" data-action="fake-wa"><span data-ic="phone" data-size="12" style="color:#fff"></span>WhatsApp</button>
+      <button class="btn btn-ghost btn-sm grow" data-action="fake-mail"><span data-ic="mail" data-size="12"></span>E-mail</button>
+      <button class="btn btn-soft btn-sm" data-action="close-drawer" data-reopen="pipeline">Pipeline</button>
+    </div>
+    <div class="grid g4 mt16" style="gap:8px">
+      <div class="field"><span class="f-label">Origem</span><span class="f-value">${c.origin}</span></div>
+      <div class="field"><span class="f-label">Responsável</span><span class="f-value">${c.owner}</span></div>
+      <div class="field"><span class="f-label">Lead score</span><span class="f-value">${c.score}/100</span></div>
+      <div class="field"><span class="f-label">Etapa</span><span class="f-value" style="color:${st.color}">${st.name}</span></div>
+    </div>
+    <div class="drawer-tabs">
+      <div class="dt active" data-dtab="timeline">Timeline</div>
+      <div class="dt" data-dtab="opps">Oportunidades</div>
+      <div class="dt" data-dtab="notes">Notas</div>
+      <div class="dt" data-dtab="data">Dados</div>
+    </div>
+  </div>
+  <div class="dp-scroll" id="dt-content">
+    <div id="dt-timeline">
+      <div class="tl">
+        ${c.timeline.map(t=>{
+          const m = {in:{bg:'#E4F8EC',c:'#15803D',ic:'inbox'}, ai:{bg:'#F3F0FF',c:'#6D28D9',ic:'bot'}, link:{bg:'#E8EFFE',c:'#1D4ED8',ic:'link'}, opp:{bg:'#FEF3E2',c:'#B45309',ic:'columns'}, user:{bg:'#E7E5FE',c:'#6D28D9',ic:'user'}, tag:{bg:'#EEF0F6',c:'#4B5570',ic:'tag'}, out:{bg:'#EEF0F6',c:'#4B5570',ic:'send'}, form:{bg:'#E8EFFE',c:'#1D4ED8',ic:'form'}, check:{bg:'#E7F6EC',c:'#15803D',ic:'checkc'}}[t.type]||{bg:'#EEF0F6',c:'#4B5570',ic:'clock'};
+          return '<div class="tl-item"><span class="tl-ico" style="background:'+m.bg+';color:'+m.c+'">'+icon(m.ic,13)+'</span><div class="grow"><div class="tl-t">'+t.text+'</div><div class="tl-s">'+t.time+'</div></div></div>';
+        }).join('')}
+      </div>
+      <div class="flex mt16" style="gap:7px">
+        <input class="f-input grow" id="note-input" placeholder="Adicionar nota na timeline...">
+        <button class="btn btn-soft btn-sm" data-action="add-note">Adicionar</button>
+      </div>
+    </div>
+    <div id="dt-opps" style="display:none">
+      <div class="card" style="box-shadow:none;border-radius:11px">
+        <div class="card-b flex between" style="padding:13px 15px">
+          <div><div class="bold">Orçamento — ${c.company}</div><div class="small muted">Criada em ${'12/07/2026'} · Vencimento 26/08</div></div>
+          <div class="right"><div class="bold" style="color:var(--accent-dark)">${BRL(c.value)}</div><span class="tag" style="background:${st.bg};color:${st.color}">${st.name}</span></div>
+        </div>
+      </div>
+      <button class="btn btn-soft btn-sm mt12" data-action="fake-opp" style="width:100%;justify-content:center">+ Nova oportunidade</button>
+    </div>
+    <div id="dt-notes" style="display:none">
+      <div class="card" style="box-shadow:none;border-radius:11px">
+        ${c.timeline.slice(0,2).map(t=>'<div class="seg-row"><div class="grow"><div class="bold small">'+t.text+'</div><div class="tiny muted">'+t.time+' · '+c.owner+'</div></div></div>').join('')}
+      </div>
+    </div>
+    <div id="dt-data" style="display:none">
+      <div class="grid g2 mt8" style="gap:10px">
+        <div class="field"><span class="f-label">Telefone</span><span class="f-value">${c.phone}</span></div>
+        <div class="field"><span class="f-label">E-mail</span><span class="f-value">${c.email}</span></div>
+        <div class="field"><span class="f-label">Empresa</span><span class="f-value">${c.company}</span></div>
+        <div class="field"><span class="f-label">Canal preferido</span><span class="f-value">${CHANNELS[c.channel].label}</span></div>
+        <div class="field"><span class="f-label">Origem</span><span class="f-value">${c.origin}</span></div>
+        <div class="field"><span class="f-label">Criado em</span><span class="f-value">12/07/2026</span></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ---------- PIPELINE ---------- */
+let pipeFilter = {q:'', eventsOpen:true};
+Views.pipeline = function(){
+  return `
+  <div class="page-head">
+    <div><div class="ph-title">Pipeline</div><div class="ph-sub">58 oportunidades · R$ 486.200 em pipeline · arraste os cards para mover de etapa</div></div>
+    <div class="ph-actions">
+      <button class="btn btn-ghost btn-sm"><span data-ic="settings" data-size="13"></span>Configurar funil</button>
+      <button class="btn btn-primary btn-sm" data-action="new-opp"><span data-ic="plus" data-size="13" style="color:#fff"></span>Nova oportunidade</button>
+    </div>
+  </div>
+  <div class="card" style="padding:10px 14px;margin-bottom:14px">
+    <div class="flex" style="gap:10px;flex-wrap:wrap">
+      <div class="tb-search" style="max-width:260px;flex:1"><span data-ic="search" data-size="14"></span><input id="pp-search" placeholder="Buscar oportunidades..."></div>
+      <div class="flex grow" style="gap:8px">
+        ${state.pipeline.stages.map(s=>'<span class="small bold" style="color:'+s.color+'"><span class="kb-dot" style="display:inline-block;background:'+s.color+';vertical-align:middle"></span> '+s.name+': <span style="color:var(--text)">'+BRL(s.sum)+'</span></span>').join('')}
+      </div>
+      <button class="btn btn-ghost btn-sm" data-action="toggle-evlog"><span data-ic="zap" data-size="12"></span>Eventos <span class="badge b-violet" id="ev-count" style="margin-left:2px">${state.events.length}</span></button>
+    </div>
+  </div>
+  <div class="flex" style="align-items:flex-start;gap:14px">
+    <div class="kanban grow" id="kanban">
+      ${state.pipeline.stages.map(s=>{
+        const items = s.items.filter(i=>{ const q=pipeFilter.q.toLowerCase(); return !q || i.name.toLowerCase().includes(q) || i.company.toLowerCase().includes(q); });
+        return '<div class="kb-col" data-stage="'+s.id+'">'+
+          '<div class="kb-head"><span class="kb-dot" style="background:'+s.color+'"></span><span class="kb-name">'+s.name+'</span><span class="kb-count">'+items.length+'</span><span class="kb-sum">'+BRL(s.sum)+'</span></div>'+
+          '<div class="kb-cards">'+items.map(i=>'<div class="kb-card" draggable="true" data-opp="'+i.id+'" data-action="open-opp">'+
+            '<div class="kc-top"><div class="grow kc-name">'+i.name+'</div><span class="kc-val" style="color:'+s.color+'">'+BRL(i.value)+'</span></div>'+
+            '<div class="kc-co">'+i.company+'</div>'+
+            '<div class="kc-bot">'+av(i.owner==='—'?'Sem responsável':i.owner,22)+'<span class="tiny muted">'+i.owner+'</span><span style="flex:1"></span>'+scoreRing(i.score,26)+'</div>'+
+          '</div>').join('')+'</div>'+
+          '<div class="kb-add" data-action="new-opp">+ Adicionar</div>'+
+        '</div>';
+      }).join('')}
+    </div>
+    <div class="card" style="width:270px;flex-shrink:0" id="ev-panel">
+      <div class="card-h"><h3><span data-ic="zap" data-size="13" style="color:var(--accent)"></span> Eventos do pipeline</h3></div>
+      <div class="card-b" style="padding:10px 14px;max-height:420px;overflow-y:auto">
+        <div class="evlog" id="evlog">
+          ${state.events.slice(0,12).map(e=>'<div class="ev-item">'+evIco(e.kind)+'<div class="grow"><div class="ev-m">'+e.text+'</div></div><span class="ev-time">'+e.time+'</span></div>').join('')}
+        </div>
+      </div>
+    </div>
+  </div>`;
+};
+
+/* ---------- CONVERSAS ---------- */
+let chatFilter = {q:'', channel:'todos'};
+Views.conversas = function(){
+  const convs = state.conversations.filter(c=>{
+    if(chatFilter.channel!=='todos' && c.channel!==chatFilter.channel) return false;
+    const q = chatFilter.q.toLowerCase();
+    return !q || c.name.toLowerCase().includes(q);
+  });
+  const sel = state.conversations.find(c=>c.id===state.selectedChat) || state.conversations[0];
+  const mkMsg = m=>{
+    if(m.from==='link') return '<div class="bubble b-in" style="background:#E8EFFE;color:#1D4ED8;font-weight:600">'+icon('link',12)+' '+esc(m.text)+'</div>';
+    if(m.from==='in') return '<div class="bubble b-in">'+esc(m.text)+'<div class="b-meta">'+m.time+'</div></div>';
+    if(m.from==='ai') return '<div class="bubble b-ai"><span class="b-ai-tag">'+icon('bot',9)+' IA</span><div>'+esc(m.text)+'</div><div class="b-meta">'+m.time+' · 0,8s</div></div>';
+    return '<div class="bubble b-out">'+esc(m.text)+'<div class="b-meta">'+m.time+' · <span data-ic="check" data-size="10"></span><span data-ic="check" data-size="10" style="margin-left:-5px"></span></div></div>';
+  };
+  const totalUnread = state.conversations.reduce((a,c)=>a+c.unread,0);
+  return `
+  <div class="page-head">
+    <div><div class="ph-title">Conversas</div><div class="ph-sub">${totalUnread} não lidas · inbox omnichannel com IA atendendo em tempo real</div></div>
+    <div class="ph-actions">
+      <button class="btn btn-ghost btn-sm"><span data-ic="inbox" data-size="13"></span>Caixa de entrada</button>
+      <button class="btn btn-ghost btn-sm"><span data-ic="filter" data-size="13"></span>Filtros</button>
+    </div>
+  </div>
+  <div class="chat-layout">
+    <div class="cl-list">
+      <div class="cl-search">
+        <div class="tb-search" style="max-width:none"><span data-ic="search" data-size="13"></span><input id="ch-search" placeholder="Buscar conversas..."></div>
+        <div class="flex mt8" style="gap:6px;flex-wrap:wrap">
+          <span class="chip ${chatFilter.channel==='todos'?'on':''}" data-chf="todos">Todos</span>
+          ${Object.keys(CHANNELS).map(ch=>'<span class="chip '+(chatFilter.channel===ch?'on':'')+'" data-chf="'+ch+'">'+CHANNELS[ch].label+'</span>').join('')}
+        </div>
+      </div>
+      <div class="cl-items">
+        ${convs.map(c=>{
+          const last = c.messages[c.messages.length-1];
+          return '<div class="cl-item '+(sel.id===c.id?'active':'')+'" data-action="open-chat" data-id="'+c.id+'">'+
+            av(c.name,38)+
+            '<div class="cli-mid"><div class="cli-name">'+c.name+(c.ai?' <span class="badge b-violet" style="padding:1px 6px;font-size:9px">IA</span>':'')+'</div><div class="cli-prev">'+esc(last.text)+'</div></div>'+
+            '<div class="right"><div class="cli-time">'+c.time+'</div>'+(c.unread?'<span class="badge b-violet" style="margin-top:4px;font-size:10px;padding:1px 7px">'+c.unread+'</span>':'')+'</div>'+
+          '</div>';
+        }).join('')}
+      </div>
+    </div>
+    <div class="chat-main">
+      <div class="chat-head">
+        ${av(sel.name,40)}
+        <div class="grow">
+          <div class="ch-title">${sel.name} <span style="margin-left:6px">${chanChip(sel.channel)}</span></div>
+          <div class="ch-sub">
+            ${sel.ai && state.chatMode==='ai' ? '<span class="ai-pill">'+icon('bot',11)+' IA ATENDENDO</span>' : '<span class="human-pill">'+icon('user',11)+' ATENDIMENTO HUMANO</span>'}
+            <span class="muted">· online agora</span>
+          </div>
+        </div>
+        ${sel.ai ? (state.chatMode==='ai'
+          ? '<button class="btn btn-soft btn-sm" data-action="assume-chat">'+icon('user',12)+' Assumir conversa</button>'
+          : '<button class="btn btn-ghost btn-sm" data-action="give-ai">'+icon('bot',12)+' Devolver para IA</button>') : ''}
+        <button class="icon-btn"><span data-ic="phone" data-size="14"></span></button>
+        <button class="icon-btn"><span data-ic="more" data-size="14"></span></button>
+      </div>
+      <div class="chat-body" id="chat-body">
+        <div class="date-sep">Hoje</div>
+        ${sel.messages.map(mkMsg).join('')}
+        <div id="chat-typing"></div>
+      </div>
+      ${sel.ai && state.chatMode==='ai' ? '<div class="quick-replies">'+
+        ['Quero uma demo','Qual o valor?','Falar com humano','Obrigado!'].map(q=>'<span class="qr" data-action="quick-reply">'+q+'</span>').join('')+
+      '</div>' : ''}
+      <div class="composer">
+        <button class="icon-btn"><span data-ic="paperclip" data-size="15"></span></button>
+        <input id="chat-input" placeholder="Digite sua mensagem... (Enter para enviar)">
+        <button class="btn btn-primary btn-sm" data-action="send-chat" style="border-radius:50%;width:36px;height:36px;padding:0;justify-content:center"><span data-ic="send" data-size="14" style="color:#fff"></span></button>
+      </div>
+    </div>
+  </div>`;
+};
+
+/* ================= ROUTER ================= */
+const VIEW_TITLES = {dashboard:'Dashboard', contatos:'Contatos', pipeline:'Pipeline', conversas:'Conversas', workflows:'Workflows', agentes:'Agentes IA', agenda:'Agenda', campanhas:'Campanhas', forms:'Forms', landings:'Landing Pages', analytics:'Analytics', integracoes:'Integrações', admin:'SaaS Admin', segmentos:'Segmentos', empresas:'Empresas'};
+
+function render(){
+  const v = state.view;
+  const content = $('#content');
+  content.innerHTML = Views[v] ? Views[v]() : '';
+  $('#tb-title').textContent = VIEW_TITLES[v]||'';
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active', n.dataset.nav===v));
+  hydrateIcons(content);
+  document.querySelector('#content').scrollTop = 0;
+  afterRender(v);
+}
+function go(view){
+  state.view = view;
+  if(view!=='pipeline'){ /* keep */ }
+  render();
+}
+function afterRender(v){
+  if(v==='dashboard'){
+    document.querySelectorAll('.tabs .tab').forEach((t,i)=>{ t.onclick=()=>{ document.querySelectorAll('.tabs .tab').forEach(x=>x.classList.remove('active')); t.classList.add('active'); toast('Período alterado para '+(['Hoje','7 dias','30 dias'][i])+' (demo)','info'); }; });
+  }
+  if(v==='contatos'){
+    const s = $('#ct-search'); if(s) s.oninput = ()=>{ contactFilter.q=s.value; Views.contatos(); render(); };
+    document.querySelectorAll('#ct-channels .tab').forEach(t=>{ t.onclick=()=>{ contactFilter.channel=t.dataset.f; render(); }; });
+    const tg = $('#ct-tag'); if(tg) tg.onchange=()=>{ contactFilter.tag=tg.value; render(); };
+    document.querySelectorAll('.dt').forEach(t=>{ t.onclick=()=>{
+      document.querySelectorAll('.dt').forEach(x=>x.classList.remove('active')); t.classList.add('active');
+      ['timeline','opps','notes','data'].forEach(k=>{ const el=$('#dt-'+k); if(el) el.style.display = (k===t.dataset.dtab?'':'none'); });
+    }; });
+  }
+  if(v==='pipeline'){ bindKanban(); const s=$('#pp-search'); if(s) s.oninput=()=>{ pipeFilter.q=s.value; render(); }; }
+  if(v==='conversas'){
+    const s=$('#ch-search'); if(s) s.oninput=()=>{ chatFilter.q=s.value; render(); };
+    document.querySelectorAll('[data-chf]').forEach(c=>{ c.onclick=()=>{ chatFilter.channel=c.dataset.chf; render(); }; });
+    const inp=$('#chat-input'); if(inp) inp.addEventListener('keydown',e=>{ if(e.key==='Enter') sendChat(); });
+    const body=$('#chat-body'); if(body) body.scrollTop=body.scrollHeight;
+  }
+  if(v==='workflows'){ bindWorkflow(); }
+  if(v==='agenda'){ bindAgenda(); }
+  if(v==='agentes'){
+    document.querySelectorAll('.dt').forEach(()=>{});
+  }
+}
+
+/* ---------- WORKFLOWS ---------- */
+const WF_META = {
+  trigger:{cls:'wn-trigger', bg:'#D1FAE5', c:'#047857', ic:'zap', kind:'Trigger'},
+  action:{cls:'wn-action', bg:'#DBEAFE', c:'#1D4ED8', ic:'play', kind:'Ação'},
+  condition:{cls:'wn-condition', bg:'#FEF3C7', c:'#B45309', ic:'sliders', kind:'Condição'},
+  delay:{cls:'wn-delay', bg:'#E5E7F0', c:'#4B5570', ic:'clock', kind:'Atraso'},
+  ai:{cls:'wn-ai', bg:'#EDE9FE', c:'#6D28D9', ic:'sparkles', kind:'IA'}
+};
+const WF_PALETTE = [
+  {group:'Triggers', items:[
+    {t:'trigger', n:'Lead Meta Ads', d:'form.submitted'},{t:'trigger', n:'Contato criado', d:'contact.created'},{t:'trigger', n:'Mensagem recebida', d:'message.received'},{t:'trigger', n:'Oportunidade criada', d:'opportunity.created'},{t:'trigger', n:'Webhook recebido', d:'webhook.received'},{t:'trigger', n:'Tag adicionada', d:'tag.added'}]},
+  {group:'Ações', items:[
+    {t:'action', n:'Enviar WhatsApp', d:'template ou livre'},{t:'action', n:'Enviar e-mail', d:'modelo HTML'},{t:'action', n:'Criar contato', d:'no CRM'},{t:'action', n:'Criar oportunidade', d:'em etapa definida'},{t:'action', n:'Mover oportunidade', d:'mudar etapa'},{t:'action', n:'Atribuir vendedor', d:'rodízio'},{t:'action', n:'Adicionar tag', d:'ao contato'},{t:'action', n:'HTTP Request', d:'webhook externo'}]},
+  {group:'Lógica', items:[
+    {t:'condition', n:'Condição IF/ELSE', d:'avaliar resposta'},{t:'delay', n:'Esperar / Delay', d:'horas ou dias'}]},
+  {group:'IA', items:[
+    {t:'ai', n:'Agente SDR', d:'conversa autônoma'},{t:'ai', n:'Análise de sentimento', d:'positivo/neutro/negativo'},{t:'ai', n:'Resumo de conversa', d:'nota no CRM'}]}
+];
+function wfNodeHTML(n){
+  const m = WF_META[n.type];
+  return '<div class="wf-node '+m.cls+(state.selectedNode===n.id?' selected':'')+'" style="left:'+n.x+'px;top:'+n.y+'px" data-node="'+n.id+'" data-action="select-node">'+
+    '<div class="wn-top"><span class="wn-ico" style="background:'+m.bg+';color:'+m.c+'">'+icon(m.ic,13)+'</span><div><div class="wn-kind">'+m.kind+'</div><div class="wn-name">'+esc(n.name)+'</div></div></div>'+
+    '<div class="wn-det">'+esc(n.detail||'')+'</div></div>';
+}
+function wfEdges(wf){
+  const N = {}; wf.nodes.forEach(n=>N[n.id]=n);
+  const paths = wf.edges.map(e=>{
+    const a=N[e.from], b=N[e.to];
+    if(!a||!b) return '';
+    const x1=a.x+93, y1=a.y+60, x2=b.x+93, y2=b.y;
+    const mid=(y1+y2)/2;
+    const d='M'+x1+' '+y1+' C '+x1+' '+mid+', '+x2+' '+mid+', '+x2+' '+y2;
+    return '<path d="'+d+'" class="'+(e.on===true?'edge-on':e.on===false?'edge-off':'')+'"/>'+
+      (e.label?'<text x="'+(x1+x2)/2+'" y="'+(mid-5)+'" text-anchor="middle" class="edge-label">'+e.label+'</text>':'');
+  });
+  return '<svg class="wf-edge" width="1020" height="500" viewBox="0 0 1020 500"><defs><marker id="arr" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L8 4L0 8z" fill="#A9AFCB"/></marker></defs>'+paths.join('')+'</svg>';
+}
+Views.workflows = function(){
+  const wf = state.workflows[state.activeWorkflow];
+  const sel = wf.nodes.find(n=>n.id===state.selectedNode);
+  const selMeta = sel? WF_META[sel.type]:null;
+  return `
+  <div class="page-head">
+    <div><div class="ph-title">Workflows</div><div class="ph-sub">Automações visuais: triggers, condições, delays e ações — sem código</div></div>
+    <div class="ph-actions">
+      <button class="btn btn-ghost btn-sm"><span data-ic="upload" data-size="13"></span>Exportar JSON</button>
+      <button class="btn btn-primary btn-sm" data-action="new-wf"><span data-ic="plus" data-size="13" style="color:#fff"></span>Novo workflow</button>
+    </div>
+  </div>
+  <div class="wf-layout">
+    <div class="wf-palette">
+      <div class="wf-pal-title">Blocos <span class="muted" style="text-transform:none;font-weight:600">(clique p/ adicionar)</span></div>
+      <div style="flex:1;overflow-y:auto">
+        ${WF_PALETTE.map(g=>'<div class="pal-group"><div class="pal-label">'+g.group+'</div>'+g.items.map(i=>{
+          const m = WF_META[i.t];
+          return '<div class="pal-item" data-action="pal-add" data-type="'+i.t+'" data-name="'+esc(i.n)+'"><span class="pi-ico" style="background:'+m.bg+';color:'+m.c+'">'+icon(m.ic,12)+'</span>'+i.n+'</div>';
+        }).join('')+'</div>').join('')}
+      </div>
+    </div>
+    <div class="wf-canvas-wrap">
+      <div class="wf-canvas">
+        ${wfEdges(wf)}
+        ${wf.nodes.map(wfNodeHTML).join('')}
+      </div>
+    </div>
+    <div class="wf-inspector">
+      <div class="wf-wf-tabs">
+        ${state.workflows.map((w,i)=>'<div class="wf-wf-tab '+(i===state.activeWorkflow?'active':'')+'" data-action="wf-tab" data-i="'+i+'">'+w.name+'</div>').join('')}
+      </div>
+      <div class="wf-insp-body" id="wf-insp">
+        ${sel && selMeta ? (function(){
+          const n = sel;
+          return '<div class="flex between mb12"><span class="tag" style="background:'+selMeta.bg+';color:'+selMeta.c+'">'+selMeta.kind+'</span><span class="tiny muted">'+n.id+'</span></div>'+
+          '<div class="field mb12"><span class="f-label">Nome do bloco</span><input class="f-input" id="wn-name" value="'+esc(n.name)+'"></div>'+
+          (n.type==='trigger'?'<div class="field mb12"><span class="f-label">Evento</span><select class="f-select"><option>form.submitted</option><option>contact.created</option><option>message.received</option><option>opportunity.stage_changed</option><option>webhook.received</option></select></div>':'')+
+          (n.type==='action'?'<div class="field mb12"><span class="f-label">Mensagem / template</span><select class="f-select"><option>Boas-vindas (template)</option><option>Tabela de preços</option><option>Follow-up 1</option><option>Follow-up 2</option></select></div>':'')+
+          (n.type==='condition'?'<div class="field mb12"><span class="f-label">Condição</span><select class="f-select"><option>Cliente respondeu?</option><option>Abriu a mensagem?</option><option>Lead score ≥ 70?</option><option>Tag contém?</option></select></div>':'')+
+          (n.type==='delay'?'<div class="field mb12"><span class="f-label">Duração</span><select class="f-select"><option>1 hora</option><option selected>1 dia</option><option>3 dias</option><option>7 dias</option></select></div>':'')+
+          (n.type==='ai'?'<div class="field mb12"><span class="f-label">Agente</span><select class="f-select"><option>SDR IA</option><option>Atendimento</option><option>Qualificação</option></select></div>':'')+
+          '<div class="field"><span class="f-label">Descrição</span><textarea class="f-textarea" style="min-height:56px">'+esc(n.detail||'')+'</textarea></div>'+
+          '<button class="btn btn-primary btn-sm mt16" data-action="wf-save" style="width:100%;justify-content:center">Salvar bloco</button>';
+        })() : '<div class="wf-insp-empty">Selecione um bloco no canvas para editar suas configurações.<br><br>Dica: clique em um bloco da paleta para adicioná-lo ao fluxo.</div>'}
+      </div>
+      <div class="wf-foot">
+        <span class="small bold">${wf.active?'Ativo':'Pausado'}</span>
+        <label class="switch"><input type="checkbox" id="wf-active" ${wf.active?'checked':''}><span class="sl"></span></label>
+        <div style="flex:1"></div>
+        <span class="tiny muted">${wf.runs} execuções</span>
+        <button class="btn btn-ghost btn-sm" data-action="wf-run"><span data-ic="play" data-size="11"></span>Executar</button>
+      </div>
+    </div>
+  </div>`;
+};
+function bindWorkflow(){
+  const sw = $('#wf-active');
+  if(sw) sw.onchange = ()=>{ const wf=state.workflows[state.activeWorkflow]; wf.active=sw.checked; toast('Workflow "'+wf.name+'" '+(sw.checked?'ativado':'pausado'),'success'); };
+}
+
+/* ---------- AGENTES IA ---------- */
+let agentChatMsgs = [];
+Views.agentes = function(){
+  const detail = state.agents.find(a=>a.id===state.agentDetail);
+  if(detail){
+    return `
+    <div class="page-head">
+      <div class="flex" style="gap:12px">
+        <span class="agent-ico" style="background:'+detail.bg+';color:'+detail.color+'">'+icon('bot',20)+'</span>
+        <div><div class="ph-title">'+detail.name+'</div><div class="ph-sub">Agente de IA '+detail.pers.toLowerCase()+'</div></div>
+      </div>
+      <div class="ph-actions">
+        <button class="btn btn-ghost btn-sm" data-action="back-agents"><span data-ic="arrow" data-size="12" style="transform:rotate(180deg)"></span>Voltar</button>
+        <button class="btn btn-soft btn-sm" data-action="test-agent"><span data-ic="message" data-size="12"></span>Testar conversa</button>
+        <button class="btn btn-primary btn-sm" data-action="save-agent"><span data-ic="check" data-size="12" style="color:#fff"></span>Salvar</button>
+      </div>
+    </div>
+    <div class="grid g-2-1">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="card">
+          <div class="card-h"><h3>Configuração do agente</h3><span class="badge '+(detail.status==='ativo'?'b-green':'b-amber')+'">'+detail.statusLabel+'</span></div>
+          <div class="card-b" style="display:flex;flex-direction:column;gap:13px">
+            <div class="field"><span class="f-label">Objetivo</span><textarea class="f-textarea">'+detail.obj+'</textarea></div>
+            <div class="field"><span class="f-label">Personalidade</span><select class="f-select"><option>Consultor comercial</option><option>Atendente prestativo</option><option>Analista estratégico</option></select></div>
+            <div class="field"><span class="f-label">Conhecimento (base de conhecimento)</span>
+              <div class="flex" style="flex-wrap:wrap;gap:6px">
+                ${detail.files.map(f=>'<span class="tool-chip">'+icon('file',11)+f+'</span>').join('')}
+                <button class="chip" data-action="add-file"><span data-ic="plus" data-size="11"></span>Adicionar arquivo</button>
+              </div>
+            </div>
+            <div class="field"><span class="f-label">Ferramentas que o agente pode usar</span>
+              <div class="flex" style="flex-wrap:wrap;gap:6px">
+                ${['CRM','Agenda','Produtos','Pipeline','WhatsApp','E-mail','Navegador (browser agent)'].map(t=>'<label class="check-row'+(detail.tools.includes(t)||t==='CRM'?' on':'')+'"><input type="checkbox" '+(detail.tools.includes(t)||t==='CRM'?'checked':'')+' data-stop="1">'+t+'</label>').join('')}
+              </div>
+            </div>
+            <div class="field"><span class="f-label">Limites de autonomia</span>
+              ${detail.limits.map(l=>'<label class="check-row mt8'+(l[1]?' on':'')+'"><input type="checkbox" '+(l[1]?'checked':'')+' data-stop="1">'+l[0]+'</label>').join('')}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="card">
+          <div class="card-h"><h3>Desempenho (30 dias)</h3></div>
+          <div class="card-b" style="padding:6px 12px">
+            <div class="agent-stats">
+              <div class="as"><div class="as-v">'+detail.stats.c+'</div><div class="as-l">Conversas</div></div>
+              <div class="as"><div class="as-v">'+detail.stats.tx+'</div><div class="as-l">Resolução</div></div>
+              <div class="as"><div class="as-v">'+detail.stats.t+'</div><div class="as-l">Custo tokens</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-h"><h3>Modelo</h3></div>
+          <div class="card-b">
+            <div class="between"><span class="small muted">Modelo base</span><b class="small">gpt-4o-mini</b></div>
+            <div class="between mt8"><span class="small muted">Temperatura</span><b class="small">0,4</b></div>
+            <div class="between mt8"><span class="small muted">Máx. tokens/resposta</span><b class="small">512</b></div>
+            <div class="between mt8"><span class="small muted">Idiomas</span><b class="small">pt-BR, en</b></div>
+          </div>
+        </div>
+        <div class="card" style="background:#F4F2FF;border-color:#E4DFFF">
+          <div class="card-b flex" style="gap:10px">
+            <span style="color:#6D28D9">'+icon('sparkles',18)+'</span>
+            <div><div class="bold small">Browser agent integrado</div><div class="small muted" style="margin-top:2px">Permita que o agente execute tarefas externas (coletar dados, preencher sistemas) via automação de navegador.</div></div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }
+  return `
+  <div class="page-head">
+    <div><div class="ph-title">Agentes IA</div><div class="ph-sub">Agentes autônomos que atendem, qualificam e executam ações no CRM</div></div>
+    <div class="ph-actions">
+      <button class="btn btn-ghost btn-sm"><span data-ic="sliders" data-size="13"></span>Modelos</button>
+      <button class="btn btn-primary btn-sm" data-action="new-agent"><span data-ic="plus" data-size="13" style="color:#fff"></span>Novo agente</button>
+    </div>
+  </div>
+  <div class="grid g3">
+    ${state.agents.map(a=>`
+      <div class="card agent-card">
+        <div class="agent-top">
+          <span class="agent-ico" style="background:${a.bg};color:${a.color}">${icon('bot',20)}</span>
+          <div class="grow"><div class="agent-name">${a.name}</div><span class="badge ${a.status==='ativo'?'b-green':'b-amber'}">${a.statusLabel}</span></div>
+        </div>
+        <div class="agent-desc">${a.desc}</div>
+        <div class="agent-tools">${a.tools.map(t=>'<span class="tool-chip">'+icon('checkc',10)+t+'</span>').join('')}</div>
+        <div class="agent-stats">
+          <div class="as"><div class="as-v">${a.stats.c}</div><div class="as-l">Conversas</div></div>
+          <div class="as"><div class="as-v">${a.stats.tx}</div><div class="as-l">Resolução</div></div>
+          <div class="as"><div class="as-v">${a.stats.t}</div><div class="as-l">Custo</div></div>
+        </div>
+        <div class="agent-foot">
+          <button class="btn btn-ghost btn-sm grow" data-action="open-agent" data-id="${a.id}">Configurar</button>
+          <button class="btn btn-soft btn-sm" data-action="test-agent" data-id="${a.id}">Testar</button>
+        </div>
+      </div>`).join('')}
+  </div>
+  <div class="card mt16">
+    <div class="card-h"><h3><span data-ic="target" data-size="13" style="color:var(--accent)"></span> Como os agentes funcionam</h3></div>
+    <div class="card-b">
+      <div class="flex" style="gap:0;flex-wrap:wrap">
+        ${['Lead chega (WhatsApp, form, ads...)','AI Router: intenção · produto · sentimento','Consulta CRM + conhecimento','Agente responde e executa ações','Resolveu? Registra no CRM · Não? Humano assume'].map((s,i)=>'<div class="flex" style="gap:6px;padding:6px 10px;background:#F6F6FC;border:1px solid var(--border);border-radius:9px;margin:3px"><span class="tag tag-purple">'+(i+1)+'</span><span class="small bold">'+s+'</span></div>'+ (i<4?'<span style="color:var(--faint);padding:0 4px">'+icon('arrow',13)+'</span>':'')).join('')}
+      </div>
+    </div>
+  </div>`;
+};
+
+/* ---------- AGENDA ---------- */
+Views.agenda = function(){
+  const days = weekDays();
+  const hours = [];
+  for(let h=8; h<=19; h++) hours.push(h);
+  const inSlot = (day,start)=>{ return state.appointments.find(a=>a.day===day && a.start===start); };
+  return `
+  <div class="page-head">
+    <div><div class="ph-title">Agenda</div><div class="ph-sub">Agendamentos com IA: o cliente marca direto no WhatsApp e aparece aqui</div></div>
+    <div class="ph-actions">
+      <button class="btn btn-ghost btn-sm"><span data-ic="settings" data-size="13"></span>Disponibilidade</button>
+      <button class="btn btn-primary btn-sm" data-action="new-appt"><span data-ic="plus" data-size="13" style="color:#fff"></span>Novo agendamento</button>
+    </div>
+  </div>
+  <div class="cal-layout">
+    <div class="cal-card">
+      <div class="cal-head">
+        <span class="bold">${new Date().toLocaleDateString('pt-BR',{weekday:'long', day:'numeric', month:'long'})}</span>
+        <div class="grow"></div>
+        <button class="icon-btn"><span data-ic="chev" data-size="13" style="transform:rotate(90deg)"></span></button>
+        <button class="btn btn-ghost btn-sm">Hoje</button>
+        <button class="icon-btn"><span data-ic="chev" data-size="13" style="transform:rotate(-90deg)"></span></button>
+      </div>
+      <div class="cal-grid">
+        <div></div>
+        ${days.map(d=>'<div class="cal-day-head'+(d.isToday?' today':'')+'"><div class="cd-w">'+d.label+'</div><div class="cd-d">'+d.day+'</div></div>').join('')}
+        ${hours.map(h=>'<div class="cal-hour-label">'+String(h).padStart(2,'0')+':00</div>'+
+          days.map(d=>{
+            const ap = inSlot(d.isToday?4:d.day%6, h);
+            if(ap){
+              const dur = (ap.end-ap.start)*46-4;
+              return '<div class="cal-slot'+(d.isToday?' today':'')+'"><div class="cal-appt" style="top:2px;height:'+dur+'px;background:'+ap.color+'" data-action="open-appt" data-id="'+ap.id+'"><div class="ca-t">'+String(Math.floor(ap.start)).padStart(2,'0')+':'+(ap.start%1?'30':'00')+'</div>'+ap.client+' · '+ap.service+'</div></div>';
+            }
+            return '<div class="cal-slot'+(d.isToday?' today':'')+'" data-action="slot-click" data-day="'+d.day+'" data-start="'+h+'"></div>';
+          }).join('')).join('')}
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="card">
+        <div class="card-h"><h3>Serviços</h3><div class="grow"></div><button class="icon-btn"><span data-ic="plus" data-size="13"></span></button></div>
+        <div class="card-b" style="padding:8px 14px">
+          ${state.services.map(s=>'<div class="seg-row" style="padding:9px 2px"><div class="grow"><div class="bold" style="font-size:12.5px">'+s.name+'</div><div class="tiny muted">'+s.dur+'</div></div><b class="small">'+s.price+'</b></div>').join('')}
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h3>Consultores</h3></div>
+        <div class="card-b" style="padding:8px 14px">
+          <div class="flex" style="padding:7px 2px">'+av('Alexandre Costa',32)+'<div class="grow"><div class="bold" style="font-size:12.5px">Alexandre Costa</div><div class="tiny muted">Seg–Sex · 09:00–18:00</div></div><span class="badge b-green">Online</span></div>
+          <div class="flex" style="padding:7px 2px">'+av('Ana Paula',32)+'<div class="grow"><div class="bold" style="font-size:12.5px">Ana Paula</div><div class="tiny muted">Seg–Sex · 09:00–18:00</div></div><span class="badge b-green">Online</span></div>
+        </div>
+      </div>
+      <div class="card" style="background:#F4F2FF;border-color:#E4DFFF">
+        <div class="card-b flex" style="gap:10px">
+          <span style="color:#6D28D9">'+icon('bot',18)+'</span>
+          <div><div class="bold small">IA agenda sozinha</div><div class="small muted" style="margin-top:2px">"Pode marcar amanhã às 15h?" → Calendar API → disponível? → agendamento criado + confirmação no WhatsApp.</div></div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+};
+function bindAgenda(){
+  document.querySelectorAll('[data-action="slot-click"]').forEach(()=>{});
+}
+
+/* ---------- CAMPANHAS ---------- */
+Views.campanhas = function(){
+  const st = {ativa:{l:'Ativa', c:'b-green'}, pausada:{l:'Pausada', c:'b-amber'}, concluida:{l:'Concluída', c:'b-gray'}, rascunho:{l:'Rascunho', c:'b-blue'}};
+  return `
+  <div class="page-head">
+    <div><div class="ph-title">Campanhas</div><div class="ph-sub">Disparos em massa com consentimento, opt-out e regras de frequência</div></div>
+    <div class="ph-actions">
+      <button class="btn btn-ghost btn-sm"><span data-ic="inbox" data-size="13"></span>Lista de transmissão</button>
+      <button class="btn btn-primary btn-sm" data-action="new-campaign"><span data-ic="plus" data-size="13" style="color:#fff"></span>Nova campanha</button>
+    </div>
+  </div>
+  <div class="grid g4 mb16">
+    <div class="kpi"><div class="kpi-top"><span class="kpi-icon" style="background:#E7F6EC;color:#15803D"><span data-ic="send" data-size="15"></span></span><div class="kpi-label">Enviadas (30d)</div></div><div class="kpi-value">18.446</div></div>
+    <div class="kpi"><div class="kpi-top"><span class="kpi-icon" style="background:#E8EFFE;color:#1D4ED8"><span data-ic="checkc" data-size="15"></span></span><div class="kpi-label">Taxa de entrega</div></div><div class="kpi-value">97,2%</div></div>
+    <div class="kpi"><div class="kpi-top"><span class="kpi-icon" style="background:#E7E5FE;color:#6D28D9"><span data-ic="message" data-size="15"></span></span><div class="kpi-label">Taxa de resposta</div></div><div class="kpi-value">12,4%</div></div>
+    <div class="kpi"><div class="kpi-top"><span class="kpi-icon" style="background:#FEF3E2;color:#B45309"><span data-ic="alert" data-size="15"></span></span><div class="kpi-label">Opt-outs (30d)</div></div><div class="kpi-value">0,4%</div></div>
+  </div>
+  <div class="card">
+    <div class="card-h"><h3>Todas as campanhas</h3><div class="grow"></div>
+      <div class="tabs"><div class="tab active">Todas</div><div class="tab">Ativas</div><div class="tab">Pausadas</div><div class="tab">Rascunhos</div></div>
+    </div>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>Campanha</th><th>Canal</th><th>Segmento</th><th>Status</th><th>Progresso</th><th>Agendamento</th><th></th></tr></thead>
+        <tbody>
+          ${state.campaigns.map(c=>{
+            const pct = Math.round(c.sent/c.total*100);
+            return '<tr>'+
+              '<td><div class="cell-name"><span class="av av-32" style="background:'+(c.channel==='whatsapp'?'#16A34A':c.channel==='email'?'#2563EB':'#8B5CF6')+';border-radius:9px">'+icon(CHANNELS[c.channel].icon,14,'#fff')+'</span><div class="cn-t">'+c.name+'</div></div></td>'+
+              '<td>'+chanChip(c.channel)+'</td>'+
+              '<td class="muted small">'+c.segment+'</td>'+
+              '<td><span class="badge '+st[c.status].c+'">'+st[c.status].l+'</span></td>'+
+              '<td style="min-width:160px"><div class="between small mb8"><span class="muted">'+fmtNum(c.sent)+' / '+fmtNum(c.total)+'</span><b>'+pct+'%</b></div><div class="prog"><div class="prog-fill '+(c.status==='pausada'?'amber':'')+'" style="width:'+pct+'%"></div></div></td>'+
+              '<td class="muted small">'+c.sched+'</td>'+
+              '<td><div class="flex" style="gap:5px">'+
+                (c.status==='ativa'?'<button class="icon-btn" data-action="camp-toggle" data-id="'+c.id+'"><span data-ic="pause" data-size="13"></span></button>':'<button class="icon-btn" data-action="camp-toggle" data-id="'+c.id+'"><span data-ic="play" data-size="13"></span></button>')+
+                '<button class="icon-btn" data-action="camp-run" data-id="'+c.id+'"><span data-ic="refresh" data-size="13"></span></button>'+
+                '<button class="icon-btn" data-action="camp-del" data-id="'+c.id+'"><span data-ic="trash" data-size="13" style="color:var(--red)"></span></button>'+
+              '</div></td></tr>';
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+};
+
+/* ---------- FORMS ---------- */
+Views.forms = function(){
+  const forms = [
+    {id:'f1', name:'Formulário de contato', subs:1284, conv:'9,2%', status:'ativo', fields:['Nome','E-mail','Telefone','Mensagem']},
+    {id:'f2', name:'Formulário de orçamento', subs:862, conv:'14,8%', status:'ativo', fields:['Nome','Empresa','Nº usuários','Mensagem']},
+    {id:'f3', name:'Form Meta Lead', subs:3210, conv:'6,1%', status:'ativo', fields:['Nome','Telefone','Cidade']},
+    {id:'f4', name:'Quiz diagnóstico', subs:214, conv:'31,4%', status:'rascunho', fields:['Passo 1–5']}
+  ];
+  return `
+  <div class="page-head">
+    <div><div class="ph-title">Forms</div><div class="ph-sub">Cada submissão vira contato no CRM e pode disparar um workflow</div></div>
+    <div class="ph-actions"><button class="btn btn-primary btn-sm" data-action="new-form"><span data-ic="plus" data-size="13" style="color:#fff"></span>Novo formulário</button></div>
+  </div>
+  <div class="grid g-1-2">
+    <div class="card">
+      <div class="card-h"><h3>Formulários</h3></div>
+      <div class="card-b" style="padding:6px 10px">
+        ${forms.map(f=>'<div class="seg-row" style="padding:11px 8px;cursor:pointer" data-action="edit-form" data-id="'+f.id+'"><span class="av av-32" style="background:#6D5DF6;border-radius:9px">'+icon('form',14,'#fff')+'</span><div class="grow"><div class="bold" style="font-size:12.5px">'+f.name+'</div><div class="tiny muted">'+f.subs.toLocaleString('pt-BR')+' submissões · conv. '+f.conv+'</div></div><span class="badge '+(f.status==='ativo'?'b-green':'b-amber')+'">'+(f.status==='ativo'?'Ativo':'Rascunho')+'</span></div>').join('')}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h3>Construtor — Formulário de orçamento</h3><div class="grow"></div><button class="btn btn-soft btn-sm" data-action="preview-form"><span data-ic="eye" data-size="12"></span>Pré-visualizar</button></div>
+      <div class="card-b">
+        <div class="grid g2">
+          ${['Nome','Empresa','Nº de usuários','E-mail','Telefone','Mensagem'].map((f,i)=>'<div class="field"><span class="f-label">'+f+'</span><input class="f-input" placeholder="'+f+'" '+(i===5?'style="grid-column:1/-1"':'')+'></div>').join('')}
+        </div>
+        <div class="flex mt16"><input class="f-input grow" placeholder="Link de redirecionamento pós-submissão (opcional)"><button class="btn btn-primary btn-sm" data-action="save-form"><span data-ic="check" data-size="12" style="color:#fff"></span>Salvar</button></div>
+        <div class="card mt16" style="background:#F4F2FF;border-color:#E4DFFF">
+          <div class="card-b flex" style="gap:10px;padding:12px">
+            <span style="color:#6D28D9">'+icon('zap',17)+'</span>
+            <div class="small muted" style="line-height:1.5">Fluxo automático: <b style="color:var(--text)">Form enviado → contato criado → workflow "Meta Ads → SDR IA" → WhatsApp em segundos → pipeline</b></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+};
+
+/* ---------- LANDING PAGES ---------- */
+Views.landings = function(){
+  const pages = [
+    {name:'Nexus — Página principal', url:'nexus.app/sua-agencia', visits:8421, conv:'8,4%', status:'publicada', grad:'linear-gradient(135deg,#6D5DF6,#8B5CF6)'},
+    {name:'Oferta Black Novembro', url:'nexus.app/black-novembro', visits:3120, conv:'12,1%', status:'publicada', grad:'linear-gradient(135deg,#EA580C,#F59E0B)'},
+    {name:'Landing Consultoria', url:'nexus.app/consultoria', visits:0, conv:'—', status:'rascunho', grad:'linear-gradient(135deg,#0891B2,#06B6D4)'}
+  ];
+  return `
+  <div class="page-head">
+    <div><div class="ph-title">Landing Pages</div><div class="ph-sub">Páginas com formulário embutido → lead no CRM → workflow → WhatsApp</div></div>
+    <div class="ph-actions"><button class="btn btn-primary btn-sm" data-action="new-landing"><span data-ic="plus" data-size="13" style="color:#fff"></span>Nova página</button></div>
+  </div>
+  <div class="grid g3">
+    ${pages.map(p=>'<div class="card"><div class="card-b" style="padding:14px"><div style="height:120px;border-radius:10px;background:'+p.grad+';display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:13px;opacity:.9">'+p.name+'</div><div class="between mt12"><div class="bold" style="font-size:13px">'+p.name+'</div><span class="badge '+(p.status==='publicada'?'b-green':'b-amber')+'">'+(p.status==='publicada'?'Publicada':'Rascunho')+'</span></div><div class="small muted mt8" style="word-break:break-all">'+icon('link',11)+' '+p.url+'</div><div class="between mt12"><span class="small muted">'+p.visits.toLocaleString('pt-BR')+' visitas</span><span class="small muted">conv. <b style="color:var(--accent-dark)">'+p.conv+'</b></span></div><div class="flex mt12" style="gap:6px"><button class="btn btn-ghost btn-sm grow" data-action="edit-landing"><span data-ic="edit" data-size="11"></span>Editar</button><button class="btn btn-soft btn-sm grow" data-action="fake-landing"><span data-ic="eye" data-size="11"></span>Ver página</button></div></div></div>').join('')}
+  </div>`;
+};
+
+/* ---------- ANALYTICS ---------- */
+Views.analytics = function(){
+  const a = state.analytics;
+  const totalFunnel = a.funnel[0].value;
+  return `
+  <div class="page-head">
+    <div><div class="ph-title">Analytics</div><div class="ph-sub">Desempenho da operação — 30 dias</div></div>
+    <div class="ph-actions">
+      <div class="tabs"><div class="tab active">30 dias</div><div class="tab">90 dias</div><div class="tab">Anual</div></div>
+      <button class="btn btn-ghost btn-sm"><span data-ic="upload" data-size="13"></span>Exportar</button>
+    </div>
+  </div>
+  <div class="grid g4 mb16">
+    <div class="kpi"><div class="kpi-top"><span class="kpi-icon" style="background:#E7E5FE;color:#6D28D9"><span data-ic="users" data-size="15"></span></span><div class="kpi-label">Leads</div></div><div class="kpi-value">3.210</div><div class="small muted">+18% vs anterior</div></div>
+    <div class="kpi"><div class="kpi-top"><span class="kpi-icon" style="background:#E8EFFE;color:#1D4ED8"><span data-ic="target" data-size="15"></span></span><div class="kpi-label">Conversão</div></div><div class="kpi-value">11,2%</div><div class="small muted">4,4% acima da meta</div></div>
+    <div class="kpi"><div class="kpi-top"><span class="kpi-icon" style="background:#FEF3E2;color:#B45309"><span data-ic="wallet" data-size="15"></span></span><div class="kpi-label">Ticket médio</div></div><div class="kpi-value">R$ 3.424</div><div class="small muted">+6% vs anterior</div></div>
+    <div class="kpi"><div class="kpi-top"><span class="kpi-icon" style="background:#E7F6EC;color:#15803D"><span data-ic="checkc" data-size="15"></span></span><div class="kpi-label">Receita prevista</div></div><div class="kpi-value">R$ 486,2k</div><div class="small muted">pipeline aberto</div></div>
+  </div>
+  <div class="grid g-3-1 mb16">
+    <div class="card">
+      <div class="card-h"><h3>Leads por dia</h3><div class="grow"></div><span class="badge b-green"><span data-ic="arrowup" data-size="11"></span>+18%</span></div>
+      <div class="card-b" style="padding:14px 18px 10px">
+        ${svgChart(a.leads30, 700, 200, '#6D5DF6')}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h3>Funil de conversão</h3></div>
+      <div class="card-b" style="padding:14px 16px">
+        ${a.funnel.map((f,i)=>{
+          const w = Math.round(f.value/totalFunnel*100);
+          const cols = ['#6D5DF6','#8B5CF6','#A78BFA','#C4B5FD'];
+          return '<div class="funnel-step"><div style="width:'+w+'%;min-width:86px" class="funnel-bar" style2="background:'+cols[i]+'"><b>'+f.value.toLocaleString('pt-BR')+'</b></div><span class="small muted">'+f.label+'</span></div>';
+        }).join('')}
+      </div>
+    </div>
+  </div>
+  <div class="grid g2">
+    <div class="card">
+      <div class="card-h"><h3>Conversas por canal</h3></div>
+      <div class="card-b">
+        ${a.channels.map(c=>'<div class="flex" style="padding:7px 0"><span class="small bold" style="width:90px">'+c.name+'</span><div class="prog grow" style="height:14px"><div class="prog-fill" style="width:'+Math.round(c.value/3412*100)+'%;background:'+c.color+'"></div></div><span class="small bold" style="width:56px;text-align:right">'+c.value.toLocaleString('pt-BR')+'</span></div>').join('')}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h3>Top origens de leads</h3></div>
+      <div class="card-b">
+        ${a.origins.map(o=>'<div class="flex" style="padding:7px 0"><span class="small bold" style="width:110px">'+o.name+'</span><div class="prog grow" style="height:14px"><div class="prog-fill" style="width:'+o.pct+'%"></div></div><span class="small bold" style="width:70px;text-align:right">'+o.count.toLocaleString('pt-BR')+'</span></div>').join('')}
+      </div>
+    </div>
+  </div>`;
+};
+
+/* ---------- INTEGRAÇÕES ---------- */
+Views.integracoes = function(){
+  const ints = [
+    {n:'Meta Ads', d:'Leads Ads direto no CRM via webhook', s:'conectado', ic:'meta', bg:'#1877F2', on:true},
+    {n:'WhatsApp Cloud API', d:'Canal oficial de WhatsApp', s:'conectado', ic:'wa', bg:'#25D366', on:true},
+    {n:'Evolution GO', d:'Gateway customizado (instâncias próprias)', s:'conectado', ic:'evo', bg:'#6D5DF6', on:true},
+    {n:'Google Agenda', d:'Sincronização de agendamentos', s:'conectado', ic:'gcal', bg:'#4285F4', on:true},
+    {n:'Instagram', d:'Mensagens diretas no inbox', s:'conectado', ic:'ig', bg:'#E1306C', on:true},
+    {n:'Facebook Messenger', d:'Mensagens do Messenger no inbox', s:'desconectado', ic:'fb', bg:'#0866FF', on:false},
+    {n:'Zapier', d:'Automações com 6.000+ apps', s:'desconectado', ic:'zapier', bg:'#FF4F00', on:false},
+    {n:'Webhooks', d:'Entrada e saída de eventos em tempo real', s:'configurar', ic:'wh', bg:'#4B5563', on:false}
+  ];
+  return `
+  <div class="page-head">
+    <div><div class="ph-title">Integrações</div><div class="ph-sub">Conecte canais, ads e ferramentas — sem ficar preso a uma tecnologia</div></div>
+    <div class="ph-actions"><button class="btn btn-ghost btn-sm"><span data-ic="webhook" data-size="13"></span>Webhooks</button></div>
+  </div>
+  <div class="grid g4">
+    ${ints.map(i=>'<div class="card int-card" '+(i.n==='Evolution GO'?'data-action="configure-int" style="cursor:pointer"':'')+'><div class="between"><span class="int-logo" style="background:'+i.bg+'">'+(i.n==='Meta Ads'?'f':i.n==='WhatsApp Cloud API'?'WA':i.n==='Evolution GO'?'EVO':i.n==='Google Agenda'?'G':i.n==='Instagram'?'IG':i.n==='Facebook Messenger'?'f':i.n==='Zapier'?'Z':'{ }')+'</span><label class="switch"><input type="checkbox" '+(i.on?'checked':'')+' data-action="int-toggle"><span class="sl"></span></label></div><div><div class="int-name">'+i.n+'</div><div class="int-desc">'+i.d+'</div></div><span class="badge '+(i.on?'b-green':'b-gray')+'">'+(i.n==='Evolution GO'?(state.integration.evolution.connected?'Conectado':'configurar'):(i.on?'Conectado':i.s))+'</span></div>').join('')}
+  </div>`;
+};
+
+/* ---------- SaaS ADMIN ---------- */
+Views.admin = function(){
+  const ad = state.admin;
+  const bar = (v,m,col)=>'<div class="prog mt8"><div class="prog-fill '+(col||'')+'" style="width:'+Math.round(v/m*100)+'%"></div></div><div class="between mt8"><span class="tiny muted">'+v.toLocaleString('pt-BR')+' / '+m.toLocaleString('pt-BR')+'</span><span class="tiny bold">'+Math.round(v/m*100)+'%</span></div>';
+  return `
+  <div class="page-head">
+    <div><div class="ph-title">SaaS Admin</div><div class="ph-sub">Multi-tenant: controle de empresas, planos, gateways e saúde do sistema</div></div>
+    <div class="ph-actions"><button class="btn btn-primary btn-sm" data-action="new-tenant"><span data-ic="plus" data-size="13" style="color:#fff"></span>Nova empresa</button></div>
+  </div>
+  <div class="grid g3 mb16">
+    ${ad.tenants.map(t=>'<div class="card"><div class="card-b"><div class="between"><div class="flex" style="gap:9px">'+av(t.name,34)+'<div><div class="bold" style="font-size:13px">'+t.name+'</div><div class="tiny muted">'+t.plan+' · R$ '+t.price+'/mês</div></div></div><span class="badge b-green">Ativo</span></div><div class="mt12"><span class="f-label">Usuários</span>'+bar(t.users.v,t.users.m,'blue')+'</div><div class="mt12"><span class="f-label">Números WhatsApp</span>'+bar(t.numbers.v,t.numbers.m)+'</div><div class="mt12"><span class="f-label">Contatos</span>'+bar(t.contacts.v,t.contacts.m,'green')+'</div><div class="mt12"><span class="f-label">Agentes IA</span>'+bar(t.agents.v,t.agents.m)+'</div></div></div>').join('')}
+  </div>
+  <div class="grid g2 mb16">
+    <div class="card">
+      <div class="card-h"><h3>Gateways de mensageria</h3></div>
+      <div class="card-b" style="padding:6px 14px">
+        ${ad.gateways.map(g=>'<div class="health-row"><span class="pulse '+g.status+'"></span><div class="grow"><div class="bold" style="font-size:12.5px">'+g.name+' <span class="tag tag-gray" style="margin-left:5px">'+g.type+'</span></div><div class="tiny muted">'+g.detail+'</div></div><span class="tiny bold muted">'+g.rate+'</span></div>').join('')}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h3>Workers (BullMQ)</h3></div>
+      <div class="card-b" style="padding:6px 14px">
+        ${ad.workers.map(w=>'<div class="health-row"><span class="pulse '+w.status+'"></span><div class="grow bold" style="font-size:12.5px">'+w.name+'</div><span class="tiny muted">'+w.q+'</span><button class="btn btn-ghost btn-sm ml" data-action="fake-wa" style="margin-left:8px"><span data-ic="refresh" data-size="11"></span></button></div>').join('')}
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-h"><h3>Saúde do sistema</h3><div class="grow"></div><span class="badge b-green"><span class="pulse ok" style="margin-right:5px"></span>Todos os sistemas operacionais</span></div>
+    <div class="card-b">
+      <div class="grid g5" style="text-align:center">
+        <div class="field"><span class="f-label">Uptime (30d)</span><span class="f-value" style="font-size:17px">'+ad.health.uptime+'</span></div>
+        <div class="field"><span class="f-label">Última checagem</span><span class="f-value" style="font-size:17px">'+ad.health.last+'</span></div>
+        <div class="field"><span class="f-label">API</span><span class="f-value" style="font-size:17px">'+ad.health.api+'</span></div>
+        <div class="field"><span class="f-label">PostgreSQL</span><span class="f-value" style="font-size:17px">'+ad.health.db+'</span></div>
+        <div class="field"><span class="f-label">Redis</span><span class="f-value" style="font-size:17px">'+ad.health.redis+'</span></div>
+      </div>
+    </div>
+  </div>`;
+};
+
+/* ---------- SEGMENTOS / EMPRESAS ---------- */
+Views.segmentos = function(){
+  const segs = [
+    {n:'Novos leads', d:'origem = Meta Ads · tag contém "Lead"', c:842},
+    {n:'Orçamentos abertos', d:'etapa = Proposta · vencimento ≥ hoje', c:12},
+    {n:'Inativos 60+ dias', d:'última atividade > 60 dias', c:2104},
+    {n:'Clientes ativos', d:'etapa = Venda · receita > R$ 1.000', c:86},
+    {n:'Alto lead score', d:'score ≥ 80 · sem oportunidade', c:314}
+  ];
+  return `
+  <div class="page-head">
+    <div><div class="ph-title">Segmentos</div><div class="ph-sub">Listas dinâmicas usadas em campanhas e workflows</div></div>
+    <div class="ph-actions"><button class="btn btn-primary btn-sm" data-action="new-segment"><span data-ic="plus" data-size="13" style="color:#fff"></span>Novo segmento</button></div>
+  </div>
+  <div class="card">
+    <div class="card-b" style="padding:8px 12px">
+      ${segs.map(s=>'<div class="seg-row"><span class="av av-32" style="background:#6D5DF6;border-radius:9px">'+icon('filter',13,'#fff')+'</span><div class="grow"><div class="bold" style="font-size:12.8px">'+s.n+'</div><div class="tiny muted">'+s.d+'</div></div><span class="badge b-violet">'+s.c.toLocaleString('pt-BR')+'</span><button class="icon-btn"><span data-ic="more" data-size="14"></span></button></div>').join('')}
+    </div>
+  </div>`;
+};
+Views.empresas = function(){
+  const map = {};
+  state.contacts.forEach(c=>{ if(!map[c.company]) map[c.company]={name:c.company, contacts:[], values:[], stages:[], owner:c.owner}; map[c.company].contacts.push(c); map[c.company].values.push(c.value||0); map[c.company].stages.push(c.stage); });
+  const rows = Object.values(map).sort((a,b)=>b.contacts.length-a.contacts.length);
+  return `
+  <div class="page-head">
+    <div><div class="ph-title">Empresas</div><div class="ph-sub">'+rows.length+' empresas associadas aos contatos</div></div>
+    <div class="ph-actions"><button class="btn btn-primary btn-sm"><span data-ic="plus" data-size="13" style="color:#fff"></span>Nova empresa</button></div>
+  </div>
+  <div class="card">
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>Empresa</th><th>Contatos</th><th>Oportunidades</th><th>Valor previsto</th><th>Melhor etapa</th><th>Responsável</th></tr></thead>
+        <tbody>
+          ${rows.map(r=>{
+            const best = ['venda','proposta','qualificado','novo'].find(s=>r.stages.includes(s));
+            const st = stageMeta[best];
+            const sum = r.values.reduce((a,b)=>a+b,0);
+            return '<tr><td><div class="cell-name">'+av(r.name,32)+'<div class="cn-t">'+r.name+'</div></div></td><td class="bold">'+r.contacts.length+'</td><td class="bold">'+r.stages.filter(s=>s!=='novo').length+'</td><td class="bold" style="color:var(--accent-dark)">'+BRL(sum)+'</td><td><span class="tag" style="background:'+st.bg+';color:'+st.color+'">'+st.name+'</span></td><td class="flex" style="gap:6px">'+av(r.owner,22)+'<span class="small">'+r.owner+'</span></td></tr>';
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+};
+
+/* ================= INTERACTIONS ================= */
+function recomputeSums(){ state.pipeline.stages.forEach(s=>s.sum=s.items.reduce((a,b)=>a+b.value,0)); }
+const AI_POOL = [
+  'Perfeito! Vou registrar isso aqui. 📋 Alguma preferência de horário para a gente continuar?',
+  'Ótima pergunta! Deixa eu verificar com o consultor e te respondo em instantes. 👀',
+  'Entendi! Para o seu caso, recomendo o plano Profissional — já enviei os detalhes no chat. ✅',
+  'Claro! Posso te passar o contato do vendedor responsável para finalizar a proposta.',
+  'Anotado! Vou adicionar isso na sua oportunidade e qualquer novidade te aviso por aqui. 🤝'
+];
+function sendChat(text){
+  const conv = state.conversations.find(c=>c.id===state.selectedChat);
+  if(!conv) return;
+  const input = $('#chat-input');
+  const msg = (text||'').trim() || (input?input.value.trim():'');
+  if(!msg) return;
+  if(input) input.value='';
+  conv.messages.push({from:'out', name:'Você', text:msg, time:nowTime()});
+  const body = $('#chat-body');
+  const b = document.createElement('div');
+  b.className='bubble b-out';
+  b.innerHTML = esc(msg)+'<div class="b-meta">'+nowTime()+' · '+icon('check',10)+icon('check',10)+'</div>';
+  body.insertBefore(b, $('#chat-typing'));
+  body.scrollTop = body.scrollHeight;
+  if(state.chatMode==='ai' && conv.ai){
+    const tp = document.createElement('div');
+    tp.className='typing'; tp.innerHTML='<i></i><i></i><i></i>';
+    $('#chat-typing').appendChild(tp);
+    body.scrollTop=body.scrollHeight;
+    setTimeout(()=>{
+      if(!document.body.contains(tp)) return;
+      tp.remove();
+      const reply = AI_POOL[conv.messages.length % AI_POOL.length];
+      conv.messages.push({from:'ai', name:'IA', text:reply, time:nowTime()});
+      const rb = document.createElement('div');
+      rb.className='bubble b-ai';
+      rb.innerHTML='<span class="b-ai-tag">'+icon('bot',9)+' IA</span><div>'+esc(reply)+'</div><div class="b-meta">'+nowTime()+' · 0,8s</div>';
+      body.insertBefore(rb, $('#chat-typing'));
+      body.scrollTop=body.scrollHeight;
+      const prev = document.querySelector('.cl-item.active .cli-prev');
+      if(prev) prev.textContent = reply;
+    }, 1200);
+  }
+}
+function bindKanban(){
+  window._dragUntil = 0;
+  document.querySelectorAll('.kb-card').forEach(card=>{
+    card.addEventListener('dragstart',e=>{
+      e.dataTransfer.setData('text/plain', card.dataset.opp);
+      card.classList.add('dragging');
+      e.dataTransfer.effectAllowed='move';
+    });
+    card.addEventListener('dragend',()=>{ card.classList.remove('dragging'); window._dragUntil = Date.now()+300; });
+  });
+  document.querySelectorAll('.kb-col').forEach(col=>{
+    col.addEventListener('dragover',e=>{ e.preventDefault(); col.classList.add('drag-over'); });
+    col.addEventListener('dragleave',()=>col.classList.remove('drag-over'));
+    col.addEventListener('drop',e=>{
+      e.preventDefault(); col.classList.remove('drag-over');
+      const id = e.dataTransfer.getData('text/plain');
+      const target = col.dataset.stage;
+      let item=null, from=null;
+      state.pipeline.stages.forEach(s=>{ const i=s.items.find(x=>x.id===id); if(i){item=i; from=s.id;} });
+      if(!item || from===target) return;
+      const fromStage = state.pipeline.stages.find(s=>s.id===from);
+      const toStage = state.pipeline.stages.find(s=>s.id===target);
+      fromStage.items = fromStage.items.filter(x=>x.id!==id);
+      toStage.items.push(item); item.stage=target;
+      recomputeSums();
+      pushEvent('stage','Oportunidade "'+item.name+'" movida: '+fromStage.name+' → '+toStage.name);
+      toast('<code>opportunity.stage_changed</code><br>'+item.name+' · '+fromStage.name+' → '+toStage.name,'event');
+      render();
+    });
+  });
+}
+function agentChat(replyText){
+  const modal = $('#modal-root .modal');
+  if(!modal) return;
+  const input = modal.querySelector('#ag-input');
+  const msg = (input?input.value:'').trim();
+  if(!msg) return;
+  if(input) input.value='';
+  const body = modal.querySelector('#ag-body');
+  const b=document.createElement('div');
+  b.className='bubble b-out'; b.style.maxWidth='80%';
+  b.innerHTML = esc(msg)+'<div class="b-meta">'+nowTime()+'</div>';
+  body.appendChild(b); body.scrollTop=body.scrollHeight;
+  setTimeout(()=>{
+    const tp=document.createElement('div');
+    tp.className='typing'; tp.innerHTML='<i></i><i></i><i></i>';
+    body.appendChild(tp); body.scrollTop=body.scrollHeight;
+    setTimeout(()=>{
+      tp.remove();
+      const rb=document.createElement('div');
+      rb.className='bubble b-ai'; rb.style.maxWidth='80%';
+      rb.innerHTML='<span class="b-ai-tag">'+icon('bot',9)+' IA</span><div>'+esc(replyText)+'</div><div class="b-meta">'+nowTime()+' · 0,8s</div>';
+      body.appendChild(rb); body.scrollTop=body.scrollHeight;
+    },900);
+  },500);
+}
+const AGENT_REPLIES = [
+  'Olá! 👋 Sou o SDR IA da Nexus. Posso te ajudar com planos, valores e agendamento de demonstrações.',
+  'Entendi! Para o seu caso, o plano Profissional (R$ 497/mês) é o mais indicado.',
+  'Posso marcar uma reunião com um consultor para a gente detalhar? Temos horários amanhã às 09h, 10h30 e 14h.',
+  'Perfeito! Já registrei no CRM e vou acompanhar seu caso. Qualquer dúvida é só chamar! 🤝'
+];
+
+/* ================= ACTIONS ================= */
+const ACTIONS = {
+  'go-view': el=>go(el.dataset.view),
+  'open-contact': el=>{ const c=state.contacts.find(x=>x.id==el.dataset.id); if(c) openDrawer(contactDrawer(c)); },
+  'close-drawer': el=>{ closeDrawer(); if(el.dataset.reopen) go(el.dataset.reopen); },
+  'close-modal': ()=>{ closeModal(); },
+  'add-note': ()=>{
+    const inp=$('#note-input'); if(!inp||!inp.value.trim()) return;
+    const c=state.contacts.find(x=>x.name===document.querySelector('.dp-head .bold').textContent.trim())||state.contacts[0];
+    c.timeline.unshift({type:'user', text:'Nota: '+inp.value.trim(), time:nowTime()});
+    inp.value=''; toast('Nota adicionada à timeline de '+c.name,'success'); pushEvent('contact','Nota adicionada em '+c.name);
+    const cid = state.contacts.indexOf(c);
+    openDrawer(contactDrawer(c));
+  },
+  'fake-wa': ()=>toast('Ação simulada: mensagem de WhatsApp enviada (demo)','success'),
+  'fake-mail': ()=>toast('Ação simulada: e-mail enviado (demo)','success'),
+  'fake-opp': ()=>toast('Nova oportunidade criada (demo)','success'),
+  'fake-landing': ()=>toast('Abrindo preview da página (demo)','info'),
+  'edit-landing': ()=>toast('Editor de landing pages (demo) — em breve','info'),
+  'preview-form': ()=>toast('Pré-visualização do formulário (demo)','info'),
+  'save-form': ()=>toast('Formulário salvo! Submissões continuam entrando no CRM.','success'),
+  'edit-form': ()=>toast('Editor de formulário aberto (demo)','info'),
+  'new-form': ()=>toast('Novo formulário (demo) — selecione campos no construtor','info'),
+  'new-landing': ()=>toast('Nova landing page (demo) — template em branco criado','info'),
+  'new-segment': ()=>toast('Novo segmento (demo) — defina condições de filtro','info'),
+  'new-tenant': ()=>toast('Nova empresa (demo) — provisioning multi-tenant simulado','info'),
+  'int-toggle': el=>{ const on = el.checked; toast((on?'Conectado':'Desconectado')+' (simulação de integração)','info'); },
+  'configure-int': ()=>evolutionConfigModal(),
+  'save-evo': ()=>{
+    const baseUrl=$('#evo-url').value.trim().replace(/\/$/,'');
+    const apiKey=$('#evo-key').value.trim();
+    const instance=$('#evo-instance').value.trim()||'nexus-prod';
+    if(!baseUrl||!apiKey){toast('Informe a URL e a API key do Evolution GO.','warn');return;}
+    state.integration.evolution={baseUrl,apiKey,instance,connected:true};
+    localStorage.setItem('nexus.evolution.baseUrl',baseUrl); localStorage.setItem('nexus.evolution.apiKey',apiKey); localStorage.setItem('nexus.evolution.instance',instance);
+    closeModal(); toast('Evolution GO conectado ao Nexus.','success'); pushEvent('integration','Evolution GO configurado · '+instance); render();
+  },
+  'evo-test': async ()=>{
+    const out=$('#evo-result'); if(out) out.textContent='Testando...';
+    try{ const old=state.integration.evolution; state.integration.evolution={...old,baseUrl:$('#evo-url').value.trim(),apiKey:$('#evo-key').value.trim(),instance:$('#evo-instance').value.trim()}; await evolutionRequest('/instance/all'); if(out){out.textContent='Conexão OK';out.style.color='#15803D';} }
+    catch(err){if(out){out.textContent=err.message;out.style.color='#B91C1C';}}
+  },
+  'new-agent': ()=>toast('Novo agente (demo) — configure objetivo e ferramentas','info'),
+  'add-file': ()=>toast('Upload de arquivo para a base de conhecimento (demo)','info'),
+  'save-agent': ()=>toast('Configurações do agente salvas!','success'),
+  'back-agents': ()=>{ state.agentDetail=null; render(); },
+  'open-agent': el=>{ state.agentDetail=el.dataset.id; render(); },
+  'test-agent': ()=>{
+    agentChatMsgs=[];
+    openModal('<div class="m-head"><h3>Testar conversa com o agente</h3><div class="grow"></div><button class="icon-btn" data-action="close-modal"><span data-ic="x" data-size="14"></span></button></div>'+
+      '<div class="m-body" style="display:flex;flex-direction:column;gap:10px;min-height:300px;background:#F8F8FD">'+
+      '<div class="bubble b-ai" style="max-width:85%;align-self:flex-start"><span class="b-ai-tag">'+icon('bot',9)+' IA</span><div>Olá! 👋 Sou o SDR IA. Qual o tamanho da sua equipe e o que você precisa hoje?</div><div class="b-meta">agora · 0,8s</div></div>'+
+      '<div id="ag-body" style="display:flex;flex-direction:column;gap:10px"></div>'+
+      '</div>'+
+      '<div class="composer" style="border-top:1px solid var(--border)"><input id="ag-input" class="f-input" placeholder="Digite como se fosse um lead..."><button class="btn btn-primary btn-sm" data-action="ag-send">Enviar</button></div>');
+    const inp=$('#ag-input'); if(inp) inp.addEventListener('keydown',e=>{ if(e.key==='Enter') agentChat(AGENT_REPLIES[Math.floor(Math.random()*AGENT_REPLIES.length)]); });
+  },
+  'ag-send': ()=>agentChat(AGENT_REPLIES[Math.floor(Math.random()*AGENT_REPLIES.length)]),
+  'new-appt': ()=>{
+    openModal('<div class="m-head"><h3>Novo agendamento</h3><div class="grow"></div><button class="icon-btn" data-action="close-modal"><span data-ic="x" data-size="14"></span></button></div>'+
+    '<div class="m-body"><div class="f-row"><div class="field"><span class="f-label">Cliente</span><select class="f-select">'+state.contacts.map(c=>'<option>'+c.name+'</option>').join('')+'</select></div><div class="field"><span class="f-label">Serviço</span><select class="f-select">'+state.services.map(s=>'<option>'+s.name+'</option>').join('')+'</select></div></div>'+
+    '<div class="f-row mt12"><div class="field"><span class="f-label">Consultor</span><select class="f-select"><option>Alexandre Costa</option><option>Ana Paula</option></select></div><div class="field"><span class="f-label">Dia</span><select class="f-select" id="ap-day">'+weekDays().map((d,i)=>'<option value="'+i+'">'+d.label+' '+d.day+'</option>').join('')+'</select></div></div>'+
+    '<div class="f-row mt12"><div class="field"><span class="f-label">Horário</span><select class="f-select" id="ap-start">'+[9,10,11,13,14,15,16,17].map(h=>'<option value="'+h+'">'+String(h).padStart(2,'0')+':00</option>').join('')+'</select></div><div class="field"><span class="f-label">Duração</span><select class="f-select"><option>30 min</option><option>60 min</option></select></div></div>'+
+    '</div><div class="m-foot"><button class="btn btn-ghost btn-sm" data-action="close-modal">Cancelar</button><button class="btn btn-primary btn-sm" data-action="save-appt">Salvar agendamento</button></div>');
+  },
+  'save-appt': ()=>{
+    const day=+($('#ap-day')?.value||4), start=+($('#ap-start')?.value||9);
+    const name = document.querySelector('#modal-root select')?.value||'João Silva';
+    state.appointments.push({id:'ap'+Date.now(), day, start, end:start+0.5, client:name, service:'Consultoria', consultant:'Alexandre', color:'#8B5CF6'});
+    closeModal(); pushEvent('appt','Agendamento criado: '+name+' · hoje '+(start<12?'às '+start+'h':'às '+start+'h'));
+    toast('Agendamento de '+name+' criado e confirmado no WhatsApp (simulado)','success');
+    render();
+  },
+  'slot-click': el=>{ const d=el.dataset.day, s=el.dataset.start; toast('Slot livre: '+d+' às '+String(s).padStart(2,'0')+':00 — clique em "Novo agendamento" para criar (demo)','info'); },
+  'open-appt': el=>{
+    const ap=state.appointments.find(a=>a.id===el.dataset.id); if(!ap) return;
+    openModal('<div class="m-head"><h3>Agendamento</h3><div class="grow"></div><button class="icon-btn" data-action="close-modal"><span data-ic="x" data-size="14"></span></button></div>'+
+    '<div class="m-body"><div class="flex" style="gap:11px">'+av(ap.client,44)+'<div><div class="bold" style="font-size:14px">'+ap.client+'</div><div class="small muted">'+ap.service+' · '+ap.consultant+'</div></div></div>'+
+    '<div class="grid g2 mt16" style="gap:10px"><div class="field"><span class="f-label">Dia</span><span class="f-value">'+weekDays()[ap.day].label+' '+weekDays()[ap.day].day+'</span></div><div class="field"><span class="f-label">Horário</span><span class="f-value">'+String(Math.floor(ap.start)).padStart(2,'0')+':'+(ap.start%1?'30':'00')+'</span></div></div>'+
+    '<div class="card mt16" style="background:#F4F2FF;border-color:#E4DFFF"><div class="card-b flex" style="gap:9px;padding:11px"><span style="color:#6D28D9">'+icon('bot',15)+'</span><div class="small muted">Criado pela IA via WhatsApp: cliente pediu o horário e o agente confirmou automaticamente.</div></div></div>'+
+    '</div><div class="m-foot"><button class="btn btn-danger btn-sm" data-action="cancel-appt" data-id="'+ap.id+'">Cancelar</button><button class="btn btn-ghost btn-sm" data-action="close-modal">Fechar</button><button class="btn btn-soft btn-sm" data-action="fake-wa">Enviar lembrete</button></div>');
+  },
+  'cancel-appt': el=>{ state.appointments=state.appointments.filter(a=>a.id!==el.dataset.id); closeModal(); toast('Agendamento cancelado — cliente notificado (simulado)','warn'); render(); },
+  'camp-toggle': el=>{
+    const c=state.campaigns.find(x=>x.id===el.dataset.id);
+    c.status = c.status==='ativa'?'pausada':'ativa';
+    toast('Campanha "'+c.name+'" '+(c.status==='ativa'?'reativada':'pausada'),(c.status==='ativa'?'success':'warn'));
+    render();
+  },
+  'camp-run': el=>{
+    const c=state.campaigns.find(x=>x.id===el.dataset.id);
+    toast('Campanha "'+c.name+'" — envio disparado na fila (worker simulado)','event');
+    pushEvent('camp','Campanha "'+c.name+'" enfileirou '+Math.min(500,c.total-c.sent).toLocaleString('pt-BR')+' mensagens');
+  },
+  'camp-del': el=>{ state.campaigns=state.campaigns.filter(x=>x.id!==el.dataset.id); toast('Campanha excluída','warn'); render(); },
+  'new-campaign': ()=>{
+    openModal('<div class="m-head"><h3>Nova campanha</h3><div class="grow"></div><button class="icon-btn" data-action="close-modal"><span data-ic="x" data-size="14"></span></button></div>'+
+    '<div class="m-body"><div class="field"><span class="f-label">Nome</span><input class="f-input" id="cp-name" placeholder="Ex.: Reativação de orçamentos"></div>'+
+    '<div class="f-row mt12"><div class="field"><span class="f-label">Canal</span><select class="f-select"><option>WhatsApp</option><option>E-mail</option><option>Instagram</option></select></div><div class="field"><span class="f-label">Segmento</span><select class="f-select"><option>Novos leads</option><option>Orçamentos abertos</option><option>Inativos 60+ dias</option><option>Clientes ativos</option></select></div></div>'+
+    '<div class="field mt12"><span class="f-label">Mensagem</span><textarea class="f-textarea" id="cp-msg">Olá {nome}! 👋 Notamos que você pediu um orçamento recentemente...\n\nPosso te enviar uma condição especial? É só responder aqui.</textarea><div class="f-hint right"><span id="cp-count">0</span>/640 caracteres · inclui opt-out automático</div></div>'+
+    '<div class="f-row mt12"><div class="field"><span class="f-label">Enviar em</span><select class="f-select"><option>Agendado (seg 10:00)</option><option>Imediatamente</option><option>Fluxo contínuo</option></select></div><div class="field"><span class="f-label">Limite diário</span><select class="f-select"><option>500 msgs/dia</option><option>1.000 msgs/dia</option><option>2.000 msgs/dia</option></select></div></div>'+
+    '</div><div class="m-foot"><button class="btn btn-ghost btn-sm" data-action="close-modal">Cancelar</button><button class="btn btn-ghost btn-sm" data-action="save-camp-draft">Salvar rascunho</button><button class="btn btn-primary btn-sm" data-action="save-camp">Ativar campanha</button></div>');
+    const ta=$('#cp-msg'); if(ta){ ta.oninput=()=>{ $('#cp-count').textContent=ta.value.length; }; ta.dispatchEvent(new Event('input')); }
+  },
+  'save-camp-draft': ()=>{ const n=$('#cp-name')?.value||'Campanha sem nome'; state.campaigns.unshift({id:'cp'+Date.now(), name:n, channel:'whatsapp', segment:'Novos leads', status:'rascunho', sent:0, total:0, rate:0, sched:'Não agendada'}); closeModal(); toast('Rascunho "'+n+'" salvo','success'); render(); },
+  'save-camp': ()=>{ const n=$('#cp-name')?.value||'Campanha sem nome'; state.campaigns.unshift({id:'cp'+Date.now(), name:n, channel:'whatsapp', segment:'Novos leads', status:'ativa', sent:0, total:1200, rate:0, sched:'Seg 10:00'}); closeModal(); toast('Campanha "'+n+'" ativada — primeiro envio agendado','success'); pushEvent('camp','Campanha "'+n+'" criada e ativada'); render(); },
+  'new-opp': ()=>{
+    openModal('<div class="m-head"><h3>Nova oportunidade</h3><div class="grow"></div><button class="icon-btn" data-action="close-modal"><span data-ic="x" data-size="14"></span></button></div>'+
+    '<div class="m-body"><div class="f-row"><div class="field"><span class="f-label">Contato</span><select class="f-select">'+state.contacts.map(c=>'<option>'+c.name+'</option>').join('')+'</select></div><div class="field"><span class="f-label">Valor (R$)</span><input class="f-input" id="op-val" type="number" value="2500"></div></div>'+
+    '<div class="f-row mt12"><div class="field"><span class="f-label">Etapa</span><select class="f-select" id="op-stage"><option value="novo">Novo Lead</option><option value="qualificado">Qualificado</option><option value="proposta">Proposta</option><option value="venda">Venda</option></select></div><div class="field"><span class="f-label">Responsável</span><select class="f-select"><option>Carlos</option><option>Ana</option></select></div></div>'+
+    '<div class="field mt12"><span class="f-label">Observação</span><textarea class="f-textarea" placeholder="Contexto da oportunidade..."></textarea></div>'+
+    '</div><div class="m-foot"><button class="btn btn-ghost btn-sm" data-action="close-modal">Cancelar</button><button class="btn btn-primary btn-sm" data-action="save-opp">Criar oportunidade</button></div>');
+  },
+  'save-opp': ()=>{
+    const stage = $('#op-stage')?.value||'novo';
+    const val = +($('#op-val')?.value||2500);
+    const name = document.querySelector('#modal-root select')?.value||'Novo contato';
+    const opp = {id:'p'+Date.now(), name, company:'Empresa do contato', value:val, stage, tags:['Novo'], score:Math.round(40+Math.random()*40), owner:'—'};
+    state.pipeline.stages.find(s=>s.id===stage).items.push(opp);
+    recomputeSums();
+    closeModal();
+    toast('<code>opportunity.created</code><br>'+name+' · '+BRL(val)+' na etapa '+stageMeta[stage].name,'event');
+    pushEvent('stage','Oportunidade criada: '+name+' · '+BRL(val)+' ('+stageMeta[stage].name+')');
+    render();
+  },
+  'open-opp': el=>{
+    if(window._dragUntil && Date.now()<window._dragUntil) return;
+    let item=null; state.pipeline.stages.forEach(s=>{ const i=s.items.find(x=>x.id===el.dataset.opp); if(i) item={it:i, st:s}; });
+    if(!item) return;
+    const it=item.it, st=item.st;
+    openModal('<div class="m-head"><h3>'+it.name+'</h3><div class="grow"></div><span class="tag" style="background:'+st.color+';color:#fff">'+st.name+'</span><button class="icon-btn" style="margin-left:8px" data-action="close-modal"><span data-ic="x" data-size="14"></span></button></div>'+
+    '<div class="m-body"><div class="flex" style="gap:11px">'+av(it.name,44)+'<div><div class="bold" style="font-size:14px">'+it.company+'</div><div class="small muted">Responsável: '+it.owner+' · Score '+it.score+'</div></div></div>'+
+    '<div class="grid g2 mt16" style="gap:10px"><div class="field"><span class="f-label">Valor</span><input class="f-input" value="'+it.value+'" type="number"></div><div class="field"><span class="f-label">Mover para</span><select class="f-select" id="op-move">'+state.pipeline.stages.map(s=>'<option value="'+s.id+'"'+(s.id===it.stage?' selected':'')+'>'+s.name+'</option>').join('')+'</select></div></div>'+
+    '<div class="card mt16" style="background:#F4F2FF;border-color:#E4DFFF"><div class="card-b flex" style="gap:9px;padding:11px"><span style="color:#6D28D9">'+icon('zap',15)+'</span><div class="small muted">Mudar de etapa dispara <b style="color:var(--text)">opportunity.stage_changed</b> e ativa workflows de follow-up.</div></div></div>'+
+    '</div><div class="m-foot"><button class="btn btn-danger btn-sm" data-action="del-opp" data-id="'+it.id+'">Excluir</button><button class="btn btn-ghost btn-sm" data-action="close-modal">Fechar</button><button class="btn btn-primary btn-sm" data-action="move-opp" data-id="'+it.id+'">Salvar</button></div>');
+  },
+  'move-opp': el=>{
+    const target=$('#op-move')?.value; if(!target) return;
+    let item=null, from=null;
+    state.pipeline.stages.forEach(s=>{ const i=s.items.find(x=>x.id===el.dataset.id); if(i){item=i; from=s.id;} });
+    if(!item||from===target){ closeModal(); return; }
+    const fromStage=state.pipeline.stages.find(s=>s.id===from), toStage=state.pipeline.stages.find(s=>s.id===target);
+    fromStage.items=fromStage.items.filter(x=>x.id!==item.id); toStage.items.push(item); item.stage=target;
+    recomputeSums(); closeModal();
+    toast('<code>opportunity.stage_changed</code><br>'+item.name+' · '+fromStage.name+' → '+toStage.name,'event');
+    pushEvent('stage','Oportunidade "'+item.name+'" movida: '+fromStage.name+' → '+toStage.name);
+    render();
+  },
+  'del-opp': el=>{
+    state.pipeline.stages.forEach(s=>s.items=s.items.filter(x=>x.id!==el.dataset.id));
+    recomputeSums(); closeModal(); toast('Oportunidade excluída','warn'); render();
+  },
+  'toggle-evlog': ()=>{ const p=$('#ev-panel'); if(!p) return; const hidden = p.style.display==='none'; p.style.display = hidden?'':'none'; toast((hidden?'Exibindo':'Ocultando')+' painel de eventos','info'); },
+  'open-chat': el=>{ state.selectedChat=el.dataset.id; render(); },
+  'send-chat': ()=>sendChat(),
+  'quick-reply': el=>sendChat(el.textContent.trim()),
+  'assume-chat': ()=>{
+    const c=state.conversations.find(x=>x.id===state.selectedChat);
+    state.chatMode='human';
+    toast('Você assumiu a conversa com '+c.name+' — IA pausada neste chat','success');
+    pushEvent('ai','Humano assumiu a conversa com '+c.name);
+    render();
+  },
+  'give-ai': ()=>{
+    const c=state.conversations.find(x=>x.id===state.selectedChat);
+    state.chatMode='ai';
+    toast('IA retomou o atendimento de '+c.name,'info');
+    render();
+  },
+  'select-node': el=>{ state.selectedNode=el.dataset.node; render(); },
+  'pal-add': el=>{
+    const wf=state.workflows[state.activeWorkflow];
+    const nid='n'+Date.now();
+    const maxX = Math.max(...wf.nodes.map(n=>n.x));
+    const n={id:nid, type:el.dataset.type, kind:'', name:el.dataset.name, detail:'Configurar...', x:Math.min(maxX+160, 830), y:Math.min(...wf.nodes.map(n=>n.y))<120?230:22};
+    wf.nodes.push(n);
+    const last = wf.nodes[wf.nodes.length-2]||wf.nodes[0];
+    if(wf.edges.length){ const prev=wf.edges[wf.edges.length-1].to; const pn=wf.nodes.find(x=>x.id===prev)||last; wf.edges.push({from:pn.id,to:nid,label:''}); }
+    else wf.edges.push({from:last.id,to:nid,label:''});
+    state.selectedNode=nid;
+    toast('Bloco "'+el.dataset.name+'" adicionado ao fluxo','success');
+    render();
+  },
+  'wf-tab': el=>{ state.activeWorkflow=+el.dataset.i; state.selectedNode=null; render(); },
+  'wf-save': ()=>{
+    const wf=state.workflows[state.activeWorkflow];
+    const n=wf.nodes.find(x=>x.id===state.selectedNode);
+    const name=$('#wn-name'); if(name&&n) n.name=name.value;
+    toast('Bloco salvo! O workflow está pronto para executar.','success');
+  },
+  'wf-run': ()=>{
+    const wf=state.workflows[state.activeWorkflow];
+    wf.runs++;
+    toast('Workflow "'+wf.name+'" executado — run #'+wf.runs+' (simulado)','event');
+    pushEvent('wf','Workflow "'+wf.name+'" executado (run #'+wf.runs+')');
+    render();
+  },
+  'new-wf': ()=>{
+    state.workflows.push({id:'wf'+Date.now(), name:'Workflow sem nome', active:false, runs:0, nodes:[
+      {id:'t1', type:'trigger', kind:'Trigger', name:'Contato criado', detail:'contact.created', x:26, y:22},
+      {id:'a1', type:'action', kind:'Ação', name:'Enviar WhatsApp', detail:'Boas-vindas', x:290, y:22}
+    ], edges:[{from:'t1', to:'a1', label:''}]});
+    state.activeWorkflow=state.workflows.length-1; state.selectedNode=null;
+    toast('Novo workflow criado (demo)','success'); render();
+  },
+  'new-contact': ()=>{
+    openModal('<div class="m-head"><h3>Novo contato</h3><div class="grow"></div><button class="icon-btn" data-action="close-modal"><span data-ic="x" data-size="14"></span></button></div>'+
+    '<div class="m-body"><div class="f-row"><div class="field"><span class="f-label">Nome</span><input class="f-input" id="nc-name" placeholder="Nome completo"></div><div class="field"><span class="f-label">Empresa</span><input class="f-input" placeholder="Empresa"></div></div>'+
+    '<div class="f-row mt12"><div class="field"><span class="f-label">WhatsApp</span><input class="f-input" placeholder="+55 62 9....-...."></div><div class="field"><span class="f-label">E-mail</span><input class="f-input" placeholder="email@empresa.com"></div></div>'+
+    '<div class="f-row mt12"><div class="field"><span class="f-label">Origem</span><select class="f-select"><option>Meta Ads</option><option>Google Ads</option><option>Site</option><option>Instagram</option><option>Indicação</option></select></div><div class="field"><span class="f-label">Canal preferido</span><select class="f-select"><option>WhatsApp</option><option>Instagram</option><option>E-mail</option><option>Webchat</option></select></div></div>'+
+    '</div><div class="m-foot"><button class="btn btn-ghost btn-sm" data-action="close-modal">Cancelar</button><button class="btn btn-primary btn-sm" data-action="save-contact">Criar contato</button></div>');
+  },
+  'save-contact': ()=>{
+    const n=$('#nc-name')?.value.trim()||'Novo contato';
+    state.contacts.unshift({id:Date.now(), name:n, company:'—', phone:'+55 62 9____-____', email:'—', channel:'whatsapp', origin:'Manual', tags:['Lead'], score:50, stage:'novo', value:0, owner:'Carlos', last:0, lastLabel:'Contato criado',
+      timeline:tl(['user','Contato criado manualmente por Carlos','agora'])});
+    closeModal();
+    toast('<code>contact.created</code><br>'+n+' criado no CRM — workflow de boas-vindas disparado','event');
+    pushEvent('contact','Novo contato criado: '+n);
+    render();
+  },
+  'quick-new': ()=>{
+    openModal('<div class="m-head"><h3>Novo</h3><div class="grow"></div><button class="icon-btn" data-action="close-modal"><span data-ic="x" data-size="14"></span></button></div>'+
+    '<div class="m-body" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+
+    '<div class="check-row on" data-action="new-contact" style="flex-direction:column;gap:6px;padding:18px 12px;text-align:center"><span style="font-size:22px">👤</span>Contato</div>'+
+    '<div class="check-row on" data-action="new-opp" style="flex-direction:column;gap:6px;padding:18px 12px;text-align:center"><span style="font-size:22px">📊</span>Oportunidade</div>'+
+    '<div class="check-row on" data-action="new-campaign" style="flex-direction:column;gap:6px;padding:18px 12px;text-align:center"><span style="font-size:22px">📣</span>Campanha</div>'+
+    '<div class="check-row on" data-action="new-appt" style="flex-direction:column;gap:6px;padding:18px 12px;text-align:center"><span style="font-size:22px">🗓️</span>Agendamento</div>'+
+    '</div>');
+  }
+};
+
+/* ================= GLOBAL DELEGATION ================= */
+document.addEventListener('click', e=>{
+  if(e.target.closest('[data-stop]')) return;
+  const el = e.target.closest('[data-action]');
+  if(!el) return;
+  const fn = ACTIONS[el.dataset.action];
+  if(fn){ e.preventDefault(); fn(el); }
+});
+document.addEventListener('keydown', e=>{
+  if(e.key==='Escape'){ closeModal(); closeDrawer(); }
+  if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='k'){ e.preventDefault(); const i=document.querySelector('#content input'); if(i) i.focus(); }
+});
+/* sidebar nav */
+document.querySelectorAll('.nav-item').forEach(n=>{
+  n.addEventListener('click', ()=>go(n.dataset.nav));
+});
+
+/* ================= INIT ================= */
+function init(){
+  state.contacts = makeContacts();
+  state.conversations = makeConversations();
+  makePipeline();
+  state.workflows = makeWorkflows();
+  state.agents = makeAgents();
+  state.appointments = makeAppointments();
+  state.services = [
+    {name:'Consultoria', dur:'30 min', price:'R$ 290'},
+    {name:'Sessão comercial', dur:'60 min', price:'R$ 490'},
+    {name:'Diagnóstico gratuito', dur:'15 min', price:'Grátis'}
+  ];
+  state.campaigns = makeCampaigns();
+  state.analytics = makeAnalytics();
+  state.admin = makeAdmin();
+  state.events = makeEvents();
+  state.selectedChat = state.conversations[0].id;
+  hydrateIcons(document);
+  render();
+  setTimeout(()=>toast('Bem-vindo ao protótipo Nexus CRM! 🚀 Navegue pelo menu lateral e arraste os cards do pipeline.','success','Boas-vindas'), 600);
+}
+init();
+</script>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a2ed82e4cc639aa9',t:'MTc4NzM1NTkyNQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
